@@ -1,0 +1,1595 @@
+<!-- kb/templates/kb/vm_list.html -->
+{% extends 'kb/base.html' %}
+
+{% block title %}虚拟机管理 - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 虚拟机列表页样式 */
+    .vm-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+
+    .vm-table th {
+        background-color: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .vm-table td {
+        padding: 12px;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+
+    .vm-table tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+
+    .status-running {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .status-stopped {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+
+    .status-maintenance {
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+
+    .accordion-button {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        font-weight: 500;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.3s;
+    }
+
+    .accordion-button:hover {
+        background-color = #e9ecef;
+    }
+
+    .accordion-content {
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        background-color: #fff;
+    }
+
+    .host-card {
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+        background-color: #fff;
+    }
+
+    .host-card h6 {
+        margin: 0 0 10px 0;
+        color: #495057;
+    }
+
+    .host-card p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+
+    /* 操作按钮组 */
+    .btn-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+    }
+
+    /* 搜索框样式 */
+    .search-container {
+        margin-bottom: 25px;
+    }
+
+    .search-input-group {
+        display: flex;
+        max-width: 500px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        border-right: none;
+        border-radius: 4px 0 0 4px;
+        font-size = 1rem;
+    }
+
+    .search-button {
+        padding: 10px 20px;
+        background-color: #0d6efd;
+        color: white;
+        border: 1px solid #0d6efd;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    /* 空状态样式 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+
+    .empty-state h5 {
+        margin-bottom: 10px;
+        color: #495057;
+    }
+
+    /* 响应式表格 */
+    @media (max-width: 768px) {
+        .vm-table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .vm-table th,
+        .vm-table td {
+            white-space: nowrap;
+            min-width: 120px;
+        }
+
+        .btn-group {
+            flex-direction: column;
+        }
+
+        .search-input-group {
+            flex-direction: column;
+        }
+
+        .search-input {
+            border-right: 1px solid #ced4da;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .search-button {
+            border-radius: 0 0 4px 4px;
+        }
+    }
+
+    /* 分页样式 */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        list-style: none;
+        padding: 0;
+        margin: 30px 0 0 0;
+    }
+
+    .page-item {
+        margin: 0 3px;
+    }
+
+    .page-link {
+        display: block;
+        padding: 8px 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        color: #0d6efd;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    .page-link:hover {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+    }
+
+    .page-item.active .page-link {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        color: white;
+    }
+
+    .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #f8f9fa;
+    }
+
+    /* 按钮加载状态 */
+    .btn[disabled] {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    /* 按钮组间距调整 */
+    .btn-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    /* 虚拟机状态摘要样式 */
+    .vm-status-summary {
+        font-size: 0.8rem;
+        margin-top: 5px;
+    }
+
+    .vm-status-item {
+        display: inline-block;
+        margin-right: 10px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background-color: #f8f9fa;
+    }
+
+    .host-status-badge {
+        margin-left: 10px;
+        font-size: 0.8em;
+        padding: 3px 8px;
+    }
+
+    /* 电源操作弹窗样式 */
+    .modal-content {
+        border-radius: 10px;
+    }
+
+    .modal-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 10px 10px 0 0;
+    }
+
+    .modal-title {
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    /* 按钮样式增强 */
+    .btn {
+        border-radius: 6px;
+        font-weight: 500;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-warning {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    /* 加载动画 */
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+    
+        .modal-content {
+            border-radius: 8px;
+        }
+    }
+
+    /* 状态徽章动画 */
+    .vm-status-badge {
+        transition: all 0.3s ease;
+    }
+
+    /* 禁用按钮样式 */
+    button:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    /* 刷新遮罩层样式 */
+    #refreshOverlay {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Toast 样式增强 */
+    .custom-toast .toast {
+        min-width: 250px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: none;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .custom-toast .toast-header {
+        border-bottom: none;
+        font-weight: 600;
+    }
+
+    .custom-toast .toast-body {
+        padding: 12px 16px;
+    }
+
+    /* 状态更新提示样式 */
+    .status-update-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        background-color: #28a745;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-server"></i> 虚拟机管理</h2>
+                <div class="d-flex gap-2">
+                    <!-- 立即更新状态按钮 -->
+                    <form method="post" action="{% url 'vm_update_status_now' %}" id="updateStatusForm">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-info" id="updateStatusBtn">
+                            <i class="fas fa-sync-alt"></i> 立即更新状态
+                        </button>
+                    </form>
+                    <!-- 添加虚拟机按钮 -->
+                    <a href="{% url 'vm_create' %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> 添加虚拟机
+                    </a>
+                </div>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" action="">
+                    <div class="input-group">
+                        <input type="text" class="form-control"
+                               placeholder="搜索虚拟机名称或IP"
+                               name="q" value="{{ search_query }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> 搜索
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 状态更新提示 -->
+        <div id="statusUpdateIndicator" class="status-update-indicator">
+            <i class="fas fa-sync-alt fa-spin"></i> 正在更新虚拟机状态...
+        </div>
+
+        <!-- 虚拟机列表 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">虚拟机列表</h5>
+            </div>
+            <div class="card-body" id="vmTableContainer">
+                {% if vms %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+			    <tr>
+        			<th style="width: 180px;">名称</th>
+        			<th style="width: 120px;">IP地址</th>
+        			<th style="width: 100px;">宿主机</th>
+				<!--<th style="width: 100px;">责任人</th>-->
+        			<th style="width: 100px;">配置</th>
+        			<th style="width: 190px;">系统</th>
+        			<th style="width: 90px;">状态</th>
+        			<th style="width: 150px;">电源操作</th>
+        			<th style="width: 150px;">操作</th>
+    			    </tr>
+                        </thead>
+                        <tbody>
+                        {% for vm in page_obj %}
+                        <tr>
+                            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+                                title="{{ vm.name }}">
+                                <strong>{{ vm.name }}</strong>
+                            </td>
+                            <td>{{ vm.ip_address }}</td>
+                            <td>{{ vm.host_machine.name }}</td>
+                            <!--<td>{{ vm.owner.username|default:"未分配" }}</td>-->
+                            <td>{{ vm.cpu }}/{{ vm.memory }}/{{ vm.disk }}</td>
+                            <td>{{ vm.get_os_display }}</td>
+                            <td>
+                                {% if vm.status == 'running' %}
+                                <span class="badge bg-success vm-status-badge vm-status-{{ vm.pk }}">运行中</span>
+                                {% elif vm.status == 'stopped' %}
+                                <span class="badge bg-secondary vm-status-badge vm-status-{{ vm.pk }}">已停止</span>
+                                {% elif vm.status == 'fault' %}
+                                <span class="badge bg-danger vm-status-badge vm-status-{{ vm.pk }}">故障</span>
+                                {% else %}
+                                <span class="badge bg-warning vm-status-badge vm-status-{{ vm.pk }}">维护中</span>
+                                {% endif %}
+                            </td>
+			    <td>
+            			<!-- 电源操作按钮 -->
+            			<button type="button" 
+                    			class="btn btn-sm btn-outline-info2 vm-power-btn"
+                    			data-vm-id="{{ vm.pk }}"
+                    			data-vm-name="{{ vm.name }}"
+                    			data-host-name="{{ vm.host_machine.name }}"
+                    			data-host-ip="{{ vm.host_machine.ip_address }}"
+                    			onclick="openPowerModal(this)">
+                		    <!--<i class="fas fa-power-off"></i>--> 电源操作
+            			</button>
+        		    </td>
+                            <td>
+                                <a href="{% url 'vm_detail' vm.pk %}" class="btn btn-sm btn-outline-primary">
+                                     查看
+                                </a>
+                                <a href="{% url 'vm_edit' vm.pk %}" class="btn btn-sm btn-outline-secondary">
+                                     编辑
+                                </a>
+                                <form method="post" action="{% url 'vm_delete' vm.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('确定要删除吗？此操作不可撤销！')">
+                                     删除
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 分页导航 -->
+                {% if page_obj.paginator.num_pages > 1 %}
+                <nav aria-label="分页导航" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                    {% if search_query %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-4x mb-3" style="color: #ddd;"></i>
+                        <h5 class="text-muted">未找到匹配的虚拟机</h5>
+                        <p class="text-muted mb-4">未找到与 "{{ search_query }}" 相关的虚拟机记录</p>
+                        <a href="{% url 'vm_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list"></i> 查看全部虚拟机
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-server fa-4x mb-3" style="color: #ddd;"></i>
+                        <h5 class="text-muted">暂无虚拟机记录</h5>
+                        <p class="text-muted mb-4">点击"添加虚拟机"按钮开始记录</p>
+                        <a href="{% url 'vm_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> 添加第一台虚拟机
+                        </a>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 按宿主机分组显示 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-network-wired"></i> 按宿主机分组</h5>
+            </div>
+            <div class="card-body">
+                {% if host_machines %}
+                <div class="accordion" id="hostAccordion">
+                    {% for host in host_machines %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#host{{ host.id }}">
+                                <i class="fas fa-desktop me-2"></i>
+                                {{ host.name }} ({{ host.ip_address }})
+                                
+                                <!-- 宿主机状态显示 -->
+                                {% if host.status == 'normal' %}
+                                <span class="badge bg-success host-status-badge">运行正常</span>
+                                {% else %}
+                                <span class="badge bg-danger host-status-badge">运行故障</span>
+                                {% endif %}
+                                
+                                <!-- 虚拟机数量显示 -->
+                                <span class="badge bg-primary ms-2">{{ host.get_vm_count }} 台虚拟机</span>
+                            </button>
+                        </h2>
+                        <div id="host{{ host.id }}" class="accordion-collapse collapse"
+                             data-bs-parent="#hostAccordion">
+                            <div class="accordion-body">
+                                <!-- 宿主机信息 -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <h6>宿主机信息</h6>
+                                        <p class="mb-1"><small>位置: {{ host.location|default:"-" }}</small></p>
+                                        <p class="mb-1"><small>最后检查时间: {{ host.last_check_time|date:"Y-m-d H:i:s"|default:"未检查" }}</small></p>
+                                        <p class="mb-1"><small>状态: 
+                                            {% if host.status == 'normal' %}
+                                            <span class="badge bg-success">运行正常</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">运行故障</span>
+                                            {% endif %}
+                                        </small></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>虚拟机状态摘要</h6>
+                                        {% with summary=host.get_vm_status_summary %}
+                                        <div class="vm-status-summary">
+                                            <span class="vm-status-item">
+                                                <span class="badge bg-success">{{ summary.running }}</span> 运行中
+                                            </span>
+                                            <span class="vm-status-item">
+                                                <span class="badge bg-secondary">{{ summary.stopped }}</span> 已停止
+                                            </span>
+                                            <span class="vm-status-item">
+                                                <span class="badge bg-danger">{{ summary.fault }}</span> 故障
+                                            </span>
+                                            <span class="vm-status-item">
+                                                <span class="badge bg-warning">{{ summary.maintenance }}</span> 维护中
+                                            </span>
+                                            <span class="vm-status-item">
+                                                <span class="badge bg-primary">{{ summary.total }}</span> 总计
+                                            </span>
+                                        </div>
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                                
+                                <!-- 虚拟机列表 -->
+                                {% if host.virtual_machines.exists %}
+                                <h6>虚拟机列表</h6>
+                                <div class="row">
+                                    {% for vm in host.virtual_machines.all %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h6 style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                                    title="{{ vm.name }}">
+                                                    {{ vm.name }}
+                                                </h6>
+                                                <p class="mb-1"><small>IP: {{ vm.ip_address }}</small></p>
+                                                <p class="mb-1"><small>责任人: {{ vm.owner.username|default:"-" }}</small></p>
+                                                <p class="mb-0"><small>状态:
+                                                    {% if vm.status == 'running' %}
+                                                    <span class="badge bg-success">运行中</span>
+                                                    {% elif vm.status == 'stopped' %}
+                                                    <span class="badge bg-secondary">已停止</span>
+                                                    {% elif vm.status == 'fault' %}
+                                                    <span class="badge bg-danger">故障</span>
+                                                    {% else %}
+                                                    <span class="badge bg-warning">维护中</span>
+                                                    {% endif %}
+                                                </small></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted">此宿主机上暂无虚拟机</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">暂无宿主机记录</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 电源操作弹窗 -->
+<div class="modal fade" id="powerOperationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="powerModalTitle">虚拟机电源操作</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="powerModalBody">
+                <!-- 内容会动态加载 -->
+                <div id="powerModalLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在获取虚拟机状态...</p>
+                </div>
+                <div id="powerModalContent" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let currentVmId = null;
+let currentVmName = null;
+let currentHostName = null;
+let currentHostIp = null;
+let currentStatus = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const updateStatusBtn = document.getElementById('updateStatusBtn');
+    const updateStatusForm = document.getElementById('updateStatusForm');
+    
+    if (updateStatusBtn && updateStatusForm) {
+        updateStatusForm.addEventListener('submit', function(e) {
+            // 防止多次提交
+            updateStatusBtn.disabled = true;
+            updateStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+            
+            // 显示一个简单的提示
+            showToast('正在更新虚拟机状态，请稍候...', 'info');
+        });
+    }
+    
+    // 初始化分页链接的AJAX支持
+    initAjaxPagination();
+});
+
+// 初始化AJAX分页
+function initAjaxPagination() {
+    const pageLinks = document.querySelectorAll('.pagination a');
+    pageLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            if (url) {
+                // 使用 AJAX 加载页面
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('.card-body');
+                    
+                    if (newContent) {
+                        const currentContent = document.querySelector('#vmTableContainer');
+                        currentContent.innerHTML = newContent.innerHTML;
+                        
+                        // 更新 URL（但不重新加载页面）
+                        window.history.pushState({}, '', url);
+                        
+                        // 重新初始化分页
+                        initAjaxPagination();
+                        // 重新绑定电源按钮
+                        rebindPowerButtons();
+                    }
+                })
+                .catch(error => console.error('加载页面失败:', error));
+            }
+        });
+    });
+}
+
+// 简单的 Toast 提示函数
+function showToast(message, type = 'info') {
+    // 创建一个临时元素
+    const toast = document.createElement('div');
+    toast.className = `position-fixed top-0 end-0 p-3`;
+    toast.style.zIndex = '1050';
+    toast.innerHTML = `
+        <div class="toast align-items-center text-bg-${type} border-0 show" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    // 3秒后自动移除
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// 原有的 confirmDelete 函数
+function confirmDelete(url, vmName) {
+    if (confirm(`确定要删除虚拟机 "${vmName}" 吗？此操作不可撤销！`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+
+        form.appendChild(csrfInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// 打开电源操作弹窗
+function openPowerModal(button) {
+    currentVmId = button.getAttribute('data-vm-id');
+    currentVmName = button.getAttribute('data-vm-name');
+    currentHostName = button.getAttribute('data-host-name');
+    currentHostIp = button.getAttribute('data-host-ip');
+    
+    // 设置弹窗标题
+    document.getElementById('powerModalTitle').textContent = `电源操作 - ${currentVmName}`;
+    
+    // 显示加载状态
+    document.getElementById('powerModalLoading').style.display = 'block';
+    document.getElementById('powerModalContent').style.display = 'none';
+    document.getElementById('powerModalContent').innerHTML = '';
+    
+    // 显示弹窗
+    const modal = new bootstrap.Modal(document.getElementById('powerOperationModal'));
+    modal.show();
+    
+    // 获取虚拟机状态
+    getVmPowerStatus();
+}
+
+// 获取虚拟机状态
+function getVmPowerStatus() {
+    const url = `/vm/${currentVmId}/power-status/`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentStatus = data.status;
+                
+                // 更新页面上的状态显示
+                updateVmStatusDisplay(data);
+                
+                // 显示操作界面
+                showPowerOperationUI(data);
+            } else {
+                showErrorUI(data.message || '获取状态失败');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorUI('网络错误，请稍后重试');
+        });
+}
+
+// 更新页面上的状态显示
+function updateVmStatusDisplay(data) {
+    // 更新弹窗中的状态显示
+    const statusBadge = document.querySelector(`.vm-status-${currentVmId}`);
+    if (statusBadge) {
+        statusBadge.textContent = data.status_display;
+        
+        // 更新颜色
+        statusBadge.className = 'badge vm-status-badge vm-status-' + currentVmId;
+        if (data.status === 'running') {
+            statusBadge.classList.add('bg-success');
+        } else if (data.status === 'stopped') {
+            statusBadge.classList.add('bg-secondary');
+        } else if (data.status === 'fault') {
+            statusBadge.classList.add('bg-danger');
+        } else {
+            statusBadge.classList.add('bg-warning');
+        }
+    }
+}
+
+// 显示操作界面
+function showPowerOperationUI(data) {
+    const contentDiv = document.getElementById('powerModalContent');
+    
+    // 隐藏加载状态
+    document.getElementById('powerModalLoading').style.display = 'none';
+    
+    let html = `
+        <div class="text-center">
+            <div class="mb-4">
+                <h5>${data.name}</h5>
+                <p class="mb-1"><small>IP: ${data.ip_address || '未获取'}</small></p>
+                <p class="mb-3"><small>宿主机: ${data.host_name} (${data.host_ip})</small></p>
+                
+                <div class="alert alert-${data.status === 'running' ? 'success' : 
+                                         data.status === 'stopped' ? 'secondary' : 
+                                         data.status === 'fault' ? 'danger' : 'warning'} mb-3">
+                    <strong>当前状态:</strong> ${data.status_display}
+                </div>
+            </div>
+    `;
+    
+    // 根据状态显示不同的操作按钮
+    if (data.status === 'running') {
+        // 运行中：显示关机和重启按钮
+        html += `
+            <div class="d-grid gap-2">
+                <button class="btn btn-warning" onclick="executePowerOperation('shutdown')">
+                     关机
+                </button>
+                <button class="btn btn-info" onclick="executePowerOperation('reboot')">
+                     重启
+                </button>
+            </div>
+        `;
+    } else if (data.status === 'stopped') {
+        // 已停止：显示开机按钮
+        html += `
+            <div class="d-grid">
+                <button class="btn btn-success" onclick="executePowerOperation('start')">
+                     开机
+                </button>
+            </div>
+        `;
+    } else if (data.status === 'fault') {
+        // 故障状态：显示错误信息
+        html += `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle"></i> 获取虚拟机状态异常</h6>
+                <p class="mb-0">${data.message}</p>
+                <hr>
+                <p class="mb-0 small">请登录宿主机 <strong>${data.host_name} (${data.host_ip})</strong> 进行确认，或核对虚拟机名称是否正确。</p>
+            </div>
+        `;
+    } else {
+        // 其他状态（如维护中）
+        html += `
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-tools"></i> 虚拟机处于${data.status_display}状态</h6>
+                <p class="mb-0">暂不支持电源操作。</p>
+            </div>
+        `;
+    }
+    
+    html += `</div>`;
+    
+    contentDiv.innerHTML = html;
+    contentDiv.style.display = 'block';
+}
+
+// 显示错误界面
+function showErrorUI(message) {
+    document.getElementById('powerModalLoading').style.display = 'none';
+    
+    const contentDiv = document.getElementById('powerModalContent');
+    
+    // 检查是否为 wait 超时错误
+    if (message.includes('wait')) {
+        contentDiv.innerHTML = `
+            <div class="text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-clock fa-3x text-info"></i>
+                </div>
+                <h5 class="text-info">操作已提交</h5>
+                <p>指令已发送，请稍后刷新查看状态</p>
+                <div class="mt-3">
+                    <button class="btn btn-outline-info" onclick="getVmPowerStatus()">
+                        <i class="fas fa-sync-alt"></i> 刷新状态
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        // 其他错误显示原始信息
+        contentDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-circle"></i> 错误</h6>
+                <p class="mb-0">${message}</p>
+            </div>
+        `;
+    }
+    
+    contentDiv.style.display = 'block';
+}
+
+// 执行电源操作
+function executePowerOperation(action) {
+    // 禁用所有操作按钮
+    const buttons = document.querySelectorAll('#powerModalContent button');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 执行中...';
+    });
+    
+    // 发送操作请求
+    const url = `/vm/${currentVmId}/power-operation/`;
+    const formData = new FormData();
+    formData.append('action', action);
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 显示成功消息
+                const contentDiv = document.getElementById('powerModalContent');
+                contentDiv.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle fa-3x text-success"></i>
+                        </div>
+                        <h5 class="text-success">操作成功</h5>
+                        <p>${data.message}</p>
+                        <p class="text-muted small">将在3秒后刷新状态...</p>
+                    </div>
+                `;
+                
+                // 3秒后重新获取状态
+                setTimeout(() => {
+                    getVmPowerStatus();
+                }, 3000);
+            } else {
+                // 显示错误消息
+                showErrorUI(`操作失败: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showErrorUI('网络错误，请稍后重试');
+        });
+}
+
+// 获取 CSRF Token
+function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 更新单个虚拟机的状态
+function updateSingleVmStatus(vmId) {
+    return new Promise((resolve, reject) => {
+        const url = `/vm/${vmId}/power-status/`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新当前行的状态显示
+                    const statusBadge = document.querySelector(`.vm-status-${vmId}`);
+                    if (statusBadge) {
+                        statusBadge.textContent = data.status_display;
+                        statusBadge.className = 'badge vm-status-badge vm-status-' + vmId;
+                        
+                        if (data.status === 'running') {
+                            statusBadge.classList.add('bg-success');
+                        } else if (data.status === 'stopped') {
+                            statusBadge.classList.add('bg-secondary');
+                        } else if (data.status === 'fault') {
+                            statusBadge.classList.add('bg-danger');
+                        } else {
+                            statusBadge.classList.add('bg-warning');
+                        }
+                    }
+                    
+                    resolve(data);
+                } else {
+                    reject(new Error(data.message || '更新状态失败'));
+                }
+            })
+            .catch(error => {
+                reject(error);
+            });
+    });
+}
+
+// 刷新虚拟机列表
+function refreshVmList() {
+    console.log('开始刷新列表...');
+    
+    // 获取当前搜索参数
+    const searchQuery = document.querySelector('input[name="q"]')?.value || '';
+    const currentPage = getCurrentPageFromUrl();
+    
+    // 构建请求 URL
+    let url = window.location.pathname;
+    const params = new URLSearchParams();
+    
+    if (searchQuery) {
+        params.append('q', searchQuery);
+    }
+    
+    if (currentPage > 1) {
+        params.append('page', currentPage);
+    }
+    
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+    
+    // 添加 AJAX 标识
+    url += (url.includes('?') ? '&' : '?') + 'ajax=true';
+    
+    // 发送 AJAX 请求
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        // 提取表格部分的内容
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newTable = doc.querySelector('#vmTableContainer');
+        
+        if (newTable) {
+            // 更新表格内容
+            const currentTable = document.querySelector('#vmTableContainer');
+            currentTable.innerHTML = newTable.innerHTML;
+            
+            // 重新绑定事件
+            rebindPowerButtons();
+            initAjaxPagination();
+            
+            console.log('列表刷新完成');
+            showToast('列表已刷新', 'success');
+        } else {
+            console.error('未能找到表格内容');
+            // 如果 AJAX 请求失败，重新加载整个页面
+            window.location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('刷新列表失败:', error);
+        showToast('刷新列表失败', 'error');
+        // 如果 AJAX 请求失败，重新加载整个页面
+        window.location.reload();
+    });
+}
+
+// 从 URL 获取当前页码
+function getCurrentPageFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return parseInt(urlParams.get('page')) || 1;
+}
+
+// 重新绑定电源按钮事件
+function rebindPowerButtons() {
+    const powerButtons = document.querySelectorAll('.vm-power-btn');
+    powerButtons.forEach(button => {
+        button.onclick = function() {
+            openPowerModal(this);
+        };
+    });
+}
+
+// 监听弹窗关闭事件，重置状态并刷新列表
+document.getElementById('powerOperationModal').addEventListener('hidden.bs.modal', function () {
+    console.log('弹窗关闭事件触发');
+    
+    // 保存当前的vmId
+    const vmIdToUpdate = currentVmId;
+    
+    // 清空变量
+    currentVmId = null;
+    currentVmName = null;
+    currentHostName = null;
+    currentHostIp = null;
+    currentStatus = null;
+    
+    // 延迟100ms后执行，确保弹窗完全关闭
+    setTimeout(() => {
+        console.log('开始更新单个虚拟机状态:', vmIdToUpdate);
+        
+        // 步骤1: 先更新当前虚拟机的状态（如果存在）
+        if (vmIdToUpdate) {
+            updateSingleVmStatus(vmIdToUpdate)
+                .then(data => {
+                    console.log('单个虚拟机状态更新成功:', data);
+                    
+                    // 等待500ms，然后刷新列表
+                    setTimeout(() => {
+                        console.log('开始刷新整个列表');
+                        refreshVmList();
+                    }, 500);
+                })
+                .catch(error => {
+                    console.error('更新单个虚拟机状态失败:', error);
+                    // 即使更新失败，也刷新列表
+                    refreshVmList();
+                });
+        } else {
+            // 如果没有vmId，直接刷新列表
+            console.log('没有虚拟机ID，直接刷新列表');
+            refreshVmList();
+        }
+    }, 100);
+});
+
+// 在页面加载完成后获取并更新当前显示的虚拟机状态
+document.addEventListener('DOMContentLoaded', function() {
+    // 延迟执行，让页面先完全渲染
+    setTimeout(() => {
+        updateCurrentPageVmStatus();
+    }, 1000); // 延迟1秒，避免影响页面初始加载
+    
+    // ... 现有的其他初始化代码 ...
+});
+
+/**
+ * 更新当前页面显示的虚拟机状态
+ */
+async function updateCurrentPageVmStatus() {
+    console.log('开始更新当前页面虚拟机状态...');
+    
+    // 获取当前页面所有虚拟机的ID
+    const vmStatusElements = document.querySelectorAll('.vm-status-badge');
+    const vmIds = [];
+    
+    vmStatusElements.forEach(element => {
+        const className = element.className;
+        // 从类名中提取虚拟机ID（类名格式：badge vm-status-badge vm-status-1）
+        const match = className.match(/vm-status-(\d+)/);
+        if (match && match[1]) {
+            vmIds.push(parseInt(match[1]));
+        }
+    });
+    
+    console.log(`找到 ${vmIds.length} 个虚拟机需要更新状态`);
+    
+    if (vmIds.length === 0) {
+        return;
+    }
+    
+    // 限制并发数，避免同时请求太多
+    const batchSize = 5;
+    const batches = [];
+    
+    // 将ID分批
+    for (let i = 0; i < vmIds.length; i += batchSize) {
+        batches.push(vmIds.slice(i, i + batchSize));
+    }
+    
+    // 逐批更新
+    for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        console.log(`更新第 ${i + 1}/${batches.length} 批，共 ${batch.length} 个虚拟机`);
+        
+        // 为这一批创建所有Promise
+        const promises = batch.map(vmId => updateSingleVmStatus(vmId));
+        
+        // 等待这一批全部完成（使用allSettled确保一个失败不影响其他）
+        await Promise.allSettled(promises);
+        
+        // 批次之间稍微延迟，减轻服务器压力
+        if (i < batches.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+    }
+    
+    console.log('页面虚拟机状态更新完成');
+    
+    // 显示完成提示
+    showToast('虚拟机状态已更新', 'success');
+    
+    // 更新按宿主机分组的摘要信息
+    updateHostSummary();
+}
+
+/**
+ * 更新宿主机状态摘要
+ */
+async function updateHostSummary() {
+    // 获取所有宿主机的ID
+    const hostAccordions = document.querySelectorAll('.accordion-item');
+    const hostIds = [];
+    
+    hostAccordions.forEach(item => {
+        const button = item.querySelector('.accordion-button');
+        const match = button.getAttribute('data-bs-target')?.match(/host(\d+)/);
+        if (match && match[1]) {
+            hostIds.push(parseInt(match[1]));
+        }
+    });
+    
+    // 如果有宿主机分组，更新每个分组的状态摘要
+    for (const hostId of hostIds) {
+        try {
+            await updateHostVmStatusSummary(hostId);
+        } catch (error) {
+            console.error(`更新宿主机 ${hostId} 状态摘要失败:`, error);
+        }
+    }
+}
+
+/**
+ * 更新单个宿主机的虚拟机状态摘要
+ */
+async function updateHostVmStatusSummary(hostId) {
+    const url = `/host/${hostId}/vm-status-summary/`;
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            // 找到对应的宿主机摘要元素
+            const summaryElement = document.querySelector(`#host${hostId} .vm-status-summary`);
+            if (summaryElement) {
+                // 更新摘要显示
+                summaryElement.innerHTML = `
+                    <span class="vm-status-item">
+                        <span class="badge bg-success">${data.summary.running}</span> 运行中
+                    </span>
+                    <span class="vm-status-item">
+                        <span class="badge bg-secondary">${data.summary.stopped}</span> 已停止
+                    </span>
+                    <span class="vm-status-item">
+                        <span class="badge bg-danger">${data.summary.fault}</span> 故障
+                    </span>
+                    <span class="vm-status-item">
+                        <span class="badge bg-warning">${data.summary.maintenance}</span> 维护中
+                    </span>
+                    <span class="vm-status-item">
+                        <span class="badge bg-primary">${data.summary.total}</span> 总计
+                    </span>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error(`获取宿主机 ${hostId} 状态摘要失败:`, error);
+    }
+}
+
+/**
+ * 为每个虚拟机状态添加点击刷新功能
+ */
+function addStatusClickRefresh() {
+    const statusBadges = document.querySelectorAll('.vm-status-badge');
+    
+    statusBadges.forEach(badge => {
+        // 添加点击事件
+        badge.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            const match = this.className.match(/vm-status-(\d+)/);
+            if (match && match[1]) {
+                const vmId = parseInt(match[1]);
+                
+                // 显示加载状态
+                const originalText = this.textContent;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+                this.style.cursor = 'wait';
+                
+                // 更新状态
+                updateSingleVmStatus(vmId)
+                    .then(() => {
+                        // 恢复可点击状态
+                        this.style.cursor = 'pointer';
+                        showToast('状态已更新', 'success');
+                    })
+                    .catch(() => {
+                        this.textContent = originalText;
+                        this.style.cursor = 'pointer';
+                        showToast('更新失败', 'error');
+                    });
+            }
+        });
+        
+        // 添加鼠标悬停效果
+        badge.style.cursor = 'pointer';
+        badge.title = '点击刷新状态';
+    });
+}
+
+// 修改现有的 updateSingleVmStatus 函数，让它支持在批量更新时不显示提示
+async function updateSingleVmStatus(vmId, showToast = false) {
+    return new Promise((resolve, reject) => {
+        const url = `/vm/${vmId}/power-status/`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新当前行的状态显示
+                    const statusBadge = document.querySelector(`.vm-status-${vmId}`);
+                    if (statusBadge) {
+                        statusBadge.textContent = data.status_display;
+                        statusBadge.className = 'badge vm-status-badge vm-status-' + vmId;
+                        
+                        // 更新颜色
+                        if (data.status === 'running') {
+                            statusBadge.classList.add('bg-success');
+                        } else if (data.status === 'stopped') {
+                            statusBadge.classList.add('bg-secondary');
+                        } else if (data.status === 'fault') {
+                            statusBadge.classList.add('bg-danger');
+                        } else {
+                            statusBadge.classList.add('bg-warning');
+                        }
+                    }
+                    
+                    if (showToast) {
+                        showToast(`虚拟机 ${data.name} 状态已更新`, 'success');
+                    }
+                    
+                    resolve(data);
+                } else {
+                    if (showToast) {
+                        showToast(`更新状态失败: ${data.message}`, 'error');
+                    }
+                    reject(new Error(data.message || '更新状态失败'));
+                }
+            })
+            .catch(error => {
+                if (showToast) {
+                    showToast('网络错误，请稍后重试', 'error');
+                }
+                reject(error);
+            });
+    });
+}
+
+// 修改 initAjaxPagination 函数，在AJAX分页加载完成后也更新状态
+function initAjaxPagination() {
+    const pageLinks = document.querySelectorAll('.pagination a');
+    pageLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('href');
+            if (url) {
+                // 显示加载状态
+                const overlay = document.createElement('div');
+                overlay.id = 'loadingOverlay';
+                overlay.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(255,255,255,0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                `;
+                overlay.innerHTML = '<div class="spinner-border text-primary"></div>';
+                
+                const tableContainer = document.querySelector('.table-responsive');
+                if (tableContainer) {
+                    tableContainer.style.position = 'relative';
+                    tableContainer.appendChild(overlay);
+                }
+                
+                // 使用 AJAX 加载页面
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('.card-body');
+                    
+                    if (newContent) {
+                        const currentContent = document.querySelector('#vmTableContainer');
+                        currentContent.innerHTML = newContent.innerHTML;
+                        
+                        // 更新 URL（但不重新加载页面）
+                        window.history.pushState({}, '', url);
+                        
+                        // 重新初始化分页
+                        initAjaxPagination();
+                        // 重新绑定电源按钮
+                        rebindPowerButtons();
+                        // 为状态添加点击刷新功能
+                        addStatusClickRefresh();
+                        // 更新当前页面的虚拟机状态
+                        setTimeout(() => {
+                            updateCurrentPageVmStatus();
+                        }, 500);
+                    }
+                })
+                .catch(error => console.error('加载页面失败:', error))
+                .finally(() => {
+                    // 移除加载遮罩
+                    if (overlay.parentNode) {
+                        overlay.remove();
+                    }
+                });
+            }
+        });
+    });
+}
+
+// 修改现有的 DOMContentLoaded 事件监听器
+document.addEventListener('DOMContentLoaded', function() {
+    const updateStatusBtn = document.getElementById('updateStatusBtn');
+    const updateStatusForm = document.getElementById('updateStatusForm');
+    
+    if (updateStatusBtn && updateStatusForm) {
+        updateStatusForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 防止多次提交
+            updateStatusBtn.disabled = true;
+            updateStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 更新中...';
+            
+            // 显示状态更新提示
+            const indicator = document.getElementById('statusUpdateIndicator');
+            if (indicator) {
+                indicator.style.display = 'block';
+            }
+            
+            // 使用AJAX提交表单
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message || '开始更新状态，请稍候...', 'success');
+                    
+                    // 延迟2秒后刷新整个列表（给后台一些时间更新状态）
+                    setTimeout(() => {
+                        refreshVmList();
+                        
+                        // 隐藏状态更新提示
+                        if (indicator) {
+                            indicator.style.display = 'none';
+                        }
+                        
+                        // 恢复按钮状态
+                        updateStatusBtn.disabled = false;
+                        updateStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 立即更新状态';
+                    }, 2000);
+                } else {
+                    showToast(data.message || '更新失败', 'error');
+                    
+                    // 恢复按钮状态
+                    updateStatusBtn.disabled = false;
+                    updateStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 立即更新状态';
+                    
+                    if (indicator) {
+                        indicator.style.display = 'none';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('网络错误，请稍后重试', 'error');
+                
+                // 恢复按钮状态
+                updateStatusBtn.disabled = false;
+                updateStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 立即更新状态';
+                
+                if (indicator) {
+                    indicator.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // 初始化分页链接的AJAX支持
+    initAjaxPagination();
+    
+    // 为状态添加点击刷新功能
+    addStatusClickRefresh();
+    
+    // 延迟执行页面状态更新
+    setTimeout(() => {
+        updateCurrentPageVmStatus();
+    }, 1000);
+});
+</script>
+{% endblock %}

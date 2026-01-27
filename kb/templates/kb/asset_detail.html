@@ -1,0 +1,317 @@
+<!-- templates/kb/asset_detail.html -->
+{% extends 'kb/base.html' %}
+
+{% block title %}{{ asset.name }} - 资产详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-section {
+        margin-bottom: 30px;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        min-width: 100px;
+    }
+    .credential-card {
+        border-left: 4px solid #0d6efd;
+    }
+    .photo-thumbnail {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .photo-thumbnail:hover {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 资产头部信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0">
+                        <i class="fas fa-box"></i> {{ asset.name }}
+                        <span class="badge bg-light text-dark ms-2">{{ asset.get_asset_type_display }}</span>
+                    </h3>
+                    <p class="mb-0 mt-2">
+                        <i class="fas fa-user"></i> 负责人: {{ asset.responsible_person }}
+                        <span class="mx-3">|</span>
+                        <i class="fas fa-building"></i> 部门: {{ asset.department }}
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'asset_edit' asset.pk %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> 编辑
+                    </a>
+                    <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-light text-danger">
+                        <i class="fas fa-trash"></i> 删除
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- 状态标签 -->
+            <div class="mb-3">
+                {% if asset.status == 'in_use' %}
+                <span class="badge bg-success">使用中</span>
+                {% elif asset.status == 'idle' %}
+                <span class="badge bg-secondary">闲置</span>
+                {% elif asset.status == 'maintenance' %}
+                <span class="badge bg-warning">维护中</span>
+                {% elif asset.status == 'retired' %}
+                <span class="badge bg-danger">已报废</span>
+                {% else %}
+                <span class="badge bg-info">已借出</span>
+                {% endif %}
+
+                {% if asset.license_expiry %}
+                    {% if asset.license_expiry < today %}
+                    <span class="badge bg-danger ms-2">许可已过期</span>
+                    {% elif asset.license_expiry < next_month %}
+                    <span class="badge bg-warning ms-2">许可即将到期</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- 基本信息 -->
+            <div class="row detail-section">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-info-circle"></i> 基本信息</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="info-label">品牌型号:</td>
+                            <td>{{ asset.brand }} {{ asset.model|default:"" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">序列号:</td>
+                            <td>{{ asset.serial_number|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">存放位置:</td>
+                            <td>{{ asset.location|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">借货人:</td>
+                            <td>{{ asset.borrower|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">创建时间:</td>
+                            <td>{{ asset.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">创建人:</td>
+                            <td>{{ asset.created_by.username|default:"-" }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="col-md-6">
+                    <h5><i class="fas fa-network-wired"></i> 网络信息</h5>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="info-label">IP地址:</td>
+                            <td>{{ asset.ip_address|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">MAC地址:</td>
+                            <td>{{ asset.mac_address|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">软件版本:</td>
+                            <td>{{ asset.version|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">许可到期:</td>
+                            <td>
+                                {% if asset.license_expiry %}
+                                {{ asset.license_expiry|date:"Y-m-d" }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">保修到期:</td>
+                            <td>
+                                {% if asset.warranty_expiry %}
+                                {{ asset.warranty_expiry|date:"Y-m-d" }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">购买信息:</td>
+                            <td>
+                                {% if asset.purchase_date %}
+                                {{ asset.purchase_date|date:"Y-m-d" }}
+                                {% if asset.purchase_price %}(¥{{ asset.purchase_price }}){% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 配置信息 -->
+            {% if asset.configuration %}
+            <div class="detail-section">
+                <h5><i class="fas fa-microchip"></i> 配置信息</h5>
+                <div class="card">
+                    <div class="card-body">
+                        {{ asset.configuration|linebreaks }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 登录凭据 -->
+            <div class="detail-section">
+                <h5><i class="fas fa-key"></i> 登录凭据</h5>
+                {% if credentials %}
+                <div class="row">
+                    {% for cred in credentials %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card credential-card">
+                            <div class="card-body">
+                                <h6>{{ cred.get_credential_type_display }}</h6>
+                                <p class="mb-1">
+                                    <strong>用户名:</strong> {{ cred.username }}
+                                </p>
+                                <p class="mb-1">
+                                    <strong>密码:</strong>
+                                    <span class="text-muted">●●●●●●●●</span>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2"
+                                            onclick="togglePassword(this, '{{ cred.password }}')">
+                                        <i class="fas fa-eye"></i> 显示
+                                    </button>
+                                </p>
+                                {% if cred.description %}
+                                <p class="mb-0">
+                                    <strong>描述:</strong> {{ cred.description }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 暂无登录凭据信息
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- 照片 -->
+            <div class="detail-section">
+                <h5><i class="fas fa-images"></i> 资产照片</h5>
+                {% if photos %}
+                <div class="row">
+                    {% for photo in photos %}
+                    <div class="col-md-3 mb-3">
+                        <div class="card">
+                            <img src="{{ photo.photo.url }}"
+                                 class="card-img-top photo-thumbnail"
+                                 alt="{{ photo.description|default:'资产照片' }}"
+                                 data-bs-toggle="modal"
+                                 data-bs-target="#photoModal{{ photo.id }}">
+                            {% if photo.description %}
+                            <div class="card-body">
+                                <p class="card-text small">{{ photo.description }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 照片模态框 -->
+                    <div class="modal fade" id="photoModal{{ photo.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">资产照片 - {{ photo.description|default:'无描述' }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <img src="{{ photo.photo.url }}"
+                                         class="img-fluid"
+                                         alt="{{ photo.description|default:'资产照片' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 暂无资产照片
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- 备注 -->
+            {% if asset.notes %}
+            <div class="detail-section">
+                <h5><i class="fas fa-sticky-note"></i> 备注</h5>
+                <div class="card">
+                    <div class="card-body">
+                        {{ asset.notes|linebreaks }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="d-flex justify-content-between">
+        <a href="{% url 'asset_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> 返回列表
+        </a>
+        <div>
+            <a href="{% url 'asset_edit' asset.pk %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i> 编辑信息
+            </a>
+            <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-danger">
+                <i class="fas fa-trash"></i> 删除资产
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 切换密码显示/隐藏
+    function togglePassword(button, password) {
+        const passwordSpan = button.parentElement.querySelector('.text-muted');
+        if (button.innerHTML.includes('显示')) {
+            passwordSpan.textContent = password;
+            button.innerHTML = '<i class="fas fa-eye-slash"></i> 隐藏';
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-outline-danger');
+        } else {
+            passwordSpan.textContent = '●●●●●●●●';
+            button.innerHTML = '<i class="fas fa-eye"></i> 显示';
+            button.classList.remove('btn-outline-danger');
+            button.classList.add('btn-outline-secondary');
+        }
+    }
+
+    // 页面加载时设置日期变量
+    const today = new Date().toISOString().split('T')[0];
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonthStr = nextMonth.toISOString().split('T')[0];
+</script>
+{% endblock %}

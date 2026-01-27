@@ -1,0 +1,475 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}仪表板 - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 仪表板样式 */
+.dashboard-container {
+    padding: 20px 0;
+}
+.stat-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: white;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    opacity: 0.8;
+}
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 10px 0;
+    color: #212529;
+}
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.stat-trend {
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+.trend-up {
+    color: #198754;
+}
+.trend-down {
+    color: #dc3545;
+}
+
+/* 卡片边框颜色 */
+.border-primary { border-left: 4px solid #0d6efd; }
+.border-success { border-left: 4px solid #198754; }
+.border-info { border-left: 4px solid #0dcaf0; }
+.border-warning { border-left: 4px solid #ffc107; }
+
+/* 图表容器 */
+.chart-container {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.chart-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+.chart-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+    margin: 0;
+}
+
+/* 进度条样式 */
+.progress-container {
+    margin: 15px 0;
+}
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+.progress-bar-container {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    border-radius: 4px;
+}
+.progress-primary { background-color: #0d6efd; }
+.progress-success { background-color: #198754; }
+.progress-info { background-color: #0dcaf0; }
+.progress-warning { background-color: #ffc107; }
+.progress-danger { background-color: #dc3545; }
+
+/* 最新内容列表 */
+.latest-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.latest-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+.latest-item:last-child {
+    border-bottom: none;
+}
+.latest-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: #212529;
+}
+.latest-meta {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* 快速操作按钮 */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+.quick-action-btn {
+    padding: 15px;
+    text-align: center;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #495057;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.quick-action-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #0d6efd;
+    color: #0d6efd;
+    transform: translateY(-2px);
+}
+.quick-action-icon {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+/* 网格系统 */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 20px;
+}
+.col-12 { grid-column: span 12; }
+.col-6 { grid-column: span 6; }
+.col-4 { grid-column: span 4; }
+.col-3 { grid-column: span 3; }
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+    .col-3 { grid-column: span 6; }
+}
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    .col-6, .col-4, .col-3 {
+        grid-column: span 1;
+    }
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+    .stat-card {
+        padding: 15px;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 欢迎标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">欢迎回来，{{ user.username }}！</h3>
+                            <p class="mb-0">祝您工作愉快！</p>
+                        </div>
+                        <i class="fas fa-chart-line fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                知识文章
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ total_articles }}
+                            </div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                <span class="text-success mr-2">
+                                    <i class="fas fa-arrow-up"></i> {{ recent_articles }}
+                                </span>
+                                <span>近7天新增</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-book stat-icon text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                虚拟机
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ total_vms }}
+                            </div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                <span>分布在 {{ total_hosts }} 台宿主机</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-server stat-icon text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                用户数量
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ total_users }}
+                            </div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                <span>交付部知识库成员</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users stat-icon text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                活跃度
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                高
+                            </div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                <span>系统运行良好</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line stat-icon text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图表和最新内容 -->
+    <div class="row">
+        <!-- 文章类型分布 -->
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-pie"></i> 文章类型分布
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if article_stats %}
+                    <div class="chart-container">
+                        {% for stat in article_stats %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <!--<span>{{ stat.article_type }}</span>-->
+				<span>{{ stat.display_name }}</span>
+                                <span class="text-primary">{{ stat.count }} 篇</span>
+                            </div>
+                            <div class="progress progress-thin">
+                                {% with total=total_articles|default:1 %}
+                                {% widthratio stat.count total 100 as percentage %}
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: {{ percentage }}%">
+                                </div>
+                                {% endwith %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">暂无数据</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 虚拟机状态 -->
+        <div class="col-xl-4 col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-server"></i> 虚拟机状态
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if vm_stats %}
+                    <div class="chart-container">
+                        {% for stat in vm_stats %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>{{ stat.status }}</span>
+                                <span class="text-success">{{ stat.count }} 台</span>
+                            </div>
+                            <div class="progress progress-thin">
+                                {% with total=total_vms|default:1 %}
+                                {% widthratio stat.count total 100 as percentage %}
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {{ percentage }}%">
+                                </div>
+                                {% endwith %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">暂无数据</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 最新文章 -->
+        <div class="col-xl-4 col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">
+                        <i class="fas fa-newspaper"></i> 最新文章
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if latest_articles %}
+                    <div class="list-group list-group-flush">
+                        {% for article in latest_articles %}
+                        <a href="{% url 'article_detail' article.pk %}" 
+                           class="list-group-item list-group-item-action border-0 px-0">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ article.title|truncatechars:30 }}</h6>
+                                <small class="text-muted">{{ article.created_at|date:"m-d" }}</small>
+                            </div>
+                            <p class="mb-1 small text-muted">
+                                {{ article.content|striptags|truncatechars:50 }}
+                            </p>
+                            <div class="d-flex">
+                                <small class="text-primary">{{ article.author.username }}</small>
+                                <small class="ms-2">
+                                    <i class="fas fa-eye"></i> {{ article.views }}
+                                </small>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">暂无文章</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 快速操作 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-secondary">
+                        <i class="fas fa-bolt"></i> 快速操作
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'article_create' %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-plus"></i> 新建文章
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'vm_create' %}" class="btn btn-success btn-block">
+                                <i class="fas fa-server"></i> 添加虚拟机
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'article_list' %}" class="btn btn-info btn-block">
+                                <i class="fas fa-search"></i> 搜索知识库
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'vm_list' %}" class="btn btn-warning btn-block">
+                                <i class="fas fa-list"></i> 查看所有虚拟机
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 添加当前日期
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentDate = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        const dateStr = currentDate.toLocaleDateString('zh-CN', options);
+        
+        // 如果页面中有current_date元素，更新它
+        const dateElement = document.querySelector('[data-current-date]');
+        if (dateElement) {
+            dateElement.textContent = dateStr;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,482 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}{{ article.title }} - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 文章详情页专用样式 */
+.article-header {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+.article-meta {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+.article-content {
+    line-height: 1.8;
+    font-size: 1.1em;
+    margin-bottom: 30px;
+}
+.article-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    margin: 15px 0;
+}
+.tag-badge {
+    font-size: 0.8em;
+    margin-right: 5px;
+    padding: 4px 8px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+    color: #495057;
+}
+.attachment-item {
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 5px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.attachment-item:hover {
+    background-color: #f8f9fa;
+}
+.comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-right: 15px;
+}
+.comment-item {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+.comment-item:last-child {
+    border-bottom: none;
+}
+
+/* CKEditor 内容样式 */
+.article-content p {
+    margin-bottom: 1rem;
+}
+.article-content h1, .article-content h2, .article-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+.article-content ul, .article-content ol {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+}
+.article-content blockquote {
+    border-left: 4px solid #007bff;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #6c757d;
+}
+.article-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+.article-content table th,
+.article-content table td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    text-align: left;
+}
+.article-content table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+.article-content pre {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+.article-content code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .article-header h1 {
+        font-size: 1.5rem;
+    }
+    .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    .comment-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 1em;
+        margin-right: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 主内容区域 -->
+    <div class="col-lg-8">
+        <!-- 文章头部 -->
+        <div class="article-header">
+            <h1 class="mb-3">{{ article.title }}</h1>
+
+            <div class="article-meta mb-3">
+                <span class="badge bg-primary">{{ article.get_article_type_display }}</span>
+                {% if article.product_version %}
+                <span class="badge bg-info">{{ article.product_version }}</span>
+                {% endif %}
+                {% if article.project_name %}
+                <span class="badge bg-secondary">{{ article.project_name }}</span>
+                {% endif %}
+                <span class="badge {% if article.is_resolved %}bg-success{% else %}bg-warning{% endif %}">
+                    {{ article.is_resolved|yesno:"已解决,待解决" }}
+                </span>
+
+                <div class="mt-2">
+                    <i class="fas fa-user"></i>
+                    <strong>{{ article.author.username }}</strong>
+                    ({{ article.author.department }})
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-calendar"></i>
+                    发布于 {{ article.created_at|date:"Y年m月d日 H:i" }}
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-sync-alt"></i>
+                    更新于 {{ article.updated_at|date:"Y年m月d日 H:i" }}
+                    <span class="mx-2">|</span>
+                    <i class="fas fa-eye"></i>
+                    {{ article.views }} 次浏览
+                </div>
+            </div>
+
+            <!-- 标签 -->
+            {% if tag_list %}
+            <div class="tags mb-3">
+                <i class="fas fa-tags"></i>
+                {% for tag in tag_list %}
+                <span class="badge tag-badge bg-light text-dark">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 文章内容 -->
+        <div class="article-content mb-5">
+            {{ article.content|safe }}
+        </div>
+
+        <!-- 附件区域 -->
+        {% if attachments %}
+        <div class="card mb-5">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-paperclip"></i> 附件下载</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for attachment in attachments %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center attachment-item">
+                        <div>
+                            {% if attachment.is_image %}
+                            <i class="fas fa-file-image text-primary"></i>
+                            {% else %}
+                            <i class="fas fa-file-archive text-secondary"></i>
+                            {% endif %}
+                            <strong class="ms-2">{{ attachment.file_name }}</strong>
+                            <small class="text-muted ms-2">({{ attachment.uploaded_at|date:"Y-m-d" }})</small>
+                        </div>
+                        <a href="{{ attachment.file.url }}" target="_blank"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-download"></i> 下载
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 操作按钮 -->
+        <div class="d-flex justify-content-between mb-5">
+            <div>
+                {% if article.author == user or user.role == 'admin' %}
+                <a href="{% url 'article_edit' article.pk %}" class="btn btn-outline-primary">
+                    <i class="fas fa-edit"></i> 编辑文章
+                </a>
+                <button type="button" class="btn btn-outline-danger ms-2"
+                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fas fa-trash"></i> 删除文章
+                </button>
+                {% endif %}
+            </div>
+            <a href="{% url 'article_list' %}" class="btn btn-secondary">
+                <i class="fas fa-list"></i> 返回列表
+            </a>
+        </div>
+
+        <!-- 评论区域 -->
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-comments"></i>
+                    评论 ({{ comments.count }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if comments %}
+                <div class="comments-list">
+                    {% for comment in comments %}
+                    <div class="comment-item mb-3">
+                        <div class="d-flex">
+                            <div class="comment-avatar me-3">
+                                {{ comment.author.username|first|upper }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between">
+                                    <strong>{{ comment.author.username }}</strong>
+                                    <small class="text-muted">{{ comment.created_at|date:"m月d日 H:i" }}</small>
+                                </div>
+                                <p class="mb-1 mt-2">{{ comment.content|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-3">{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-comment-slash fa-2x mb-3"></i>
+                    <p>还没有评论，快来发表第一条评论吧！</p>
+                </div>
+                {% endif %}
+
+                <!-- 评论表单 -->
+                {% if user.is_authenticated %}
+                <div class="comment-form mt-4">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_content" class="form-label">
+                                <i class="fas fa-comment-dots"></i> 发表评论
+                            </label>
+                            {{ form.content }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> 发表评论
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle"></i>
+                    请先 <a href="{% url 'login' %}" class="alert-link">登录</a> 后发表评论
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="col-lg-4">
+        <!-- 作者信息 -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-user-circle"></i> 作者信息</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="comment-avatar mx-auto mb-2" style="width: 60px; height: 60px;">
+                        {{ article.author.username|first|upper }}
+                    </div>
+                    <h5>{{ article.author.username }}</h5>
+                    <p class="text-muted small">{{ article.author.department }}</p>
+                </div>
+                <div class="text-center">
+                    {% if article.author.role == 'admin' %}
+                    <span class="badge bg-danger">管理员</span>
+                    {% else %}
+                    <span class="badge bg-info">普通用户</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 文章信息 -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-info-circle"></i> 文章信息</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-file-alt text-primary"></i>
+                        <strong>文章ID：</strong> #{{ article.id }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-calendar-plus text-success"></i>
+                        <strong>创建时间：</strong> {{ article.created_at|date:"Y-m-d H:i" }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-calendar-check text-info"></i>
+                        <strong>更新时间：</strong> {{ article.updated_at|date:"Y-m-d H:i" }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-eye text-warning"></i>
+                        <strong>浏览次数：</strong> {{ article.views }}
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-comment text-secondary"></i>
+                        <strong>评论数量：</strong> {{ comments.count }}
+                    </li>
+                    <li>
+                        <i class="fas fa-paperclip text-muted"></i>
+                        <strong>附件数量：</strong> {{ attachments.count }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 快速操作 -->
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-bolt"></i> 快速操作</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'article_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-list"></i> 查看所有文章
+                    </a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'article_create' %}" class="btn btn-outline-success">
+                        <i class="fas fa-plus"></i> 创建新文章
+                    </a>
+                    {% endif %}
+                    <a href="?type={{ article.article_type }}" class="btn btn-outline-info">
+                        <i class="fas fa-filter"></i> 查看同类问题
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> 删除确认
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6>您确定要删除这篇文章吗？</h6>
+                    <p class="mb-0"><strong>"{{ article.title }}"</strong></p>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>警告：</strong>此操作不可恢复！文章的所有评论和附件也将被删除。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <form method="post" action="{% url 'article_delete' article.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> 确认删除
+                    </button>
+                </form>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图片查看模态框 -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="min-width: 85%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">图片预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="" class="img-fluid" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <a id="downloadImage" href="#" class="btn btn-primary" download>
+                    <i class="fas fa-download"></i> 下载图片
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+    const modalImage = document.getElementById('modalImage');
+    const downloadLink = document.getElementById('downloadImage');
+    
+    // 为文章内容中的所有图片添加点击事件
+    const articleContent = document.querySelector('.article-content');
+    if (articleContent) {
+        const images = articleContent.querySelectorAll('img');
+        images.forEach(img => {
+            // 添加点击样式提示
+            img.style.cursor = 'zoom-in';
+            img.title = '点击放大';
+            
+            // 添加点击事件
+            img.addEventListener('click', function() {
+                const imgSrc = this.src;
+                const imgAlt = this.alt || '图片';
+                
+                // 设置模态框内容
+                modalImage.src = imgSrc;
+                modalImage.alt = imgAlt;
+                downloadLink.href = imgSrc;
+                downloadLink.download = imgAlt || 'image.png';
+                
+                // 显示模态框
+                imageModal.show();
+            });
+        });
+    }
+    
+    // 关闭模态框时清空图片（可选）
+    document.getElementById('imageModal').addEventListener('hidden.bs.modal', function() {
+        modalImage.src = '';
+    });
+});
+</script>
+{% endblock %}

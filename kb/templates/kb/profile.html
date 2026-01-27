@@ -1,0 +1,221 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}个人资料 - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 页面通用样式 */
+.page-container {
+    padding: 20px 0;
+}
+
+/* 卡片样式 */
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.card-header {
+    background-color: #f8f9fa;
+    padding: 15px 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+.card-header h5 {
+    margin: 0;
+    color: #495057;
+    font-weight: 600;
+}
+.card-body {
+    padding: 20px;
+}
+
+/* 表格样式 */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.table th {
+    background-color: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+.table tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 表单样式 */
+.form-group {
+    margin-bottom: 20px;
+}
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+}
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+.form-control:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* 按钮样式 */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+.btn-primary {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+.btn-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+.btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+}
+.btn-danger {
+    color: #fff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+}
+
+/* 徽章样式 */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.75em;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 4px;
+}
+.bg-primary { background-color: #0d6efd; color: white; }
+.bg-success { background-color: #198754; color: white; }
+.bg-info { background-color: #0dcaf0; color: white; }
+.bg-warning { background-color: #ffc107; color: #212529; }
+.bg-danger { background-color: #dc3545; color: white; }
+.bg-secondary { background-color: #6c757d; color: white; }
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .page-container {
+        padding: 10px;
+    }
+    .card-body {
+        padding: 15px;
+    }
+    .table {
+        display: block;
+        overflow-x: auto;
+    }
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-circle"></i> 个人资料</h4>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-user-circle fa-5x text-primary"></i>
+                </div>
+                
+                <table class="table table-bordered">
+                    <tr>
+                        <th width="30%">用户名</th>
+                        <td>{{ user.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>角色</th>
+                        <td>
+                            {% if user.role == 'admin' %}
+                            <span class="badge bg-danger">管理员</span>
+                            {% else %}
+                            <span class="badge bg-info">普通用户</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>部门</th>
+                        <td>{{ user.department }}</td>
+                    </tr>
+                    <tr>
+                        <th>邮箱</th>
+                        <td>{{ user.email|default:"未设置" }}</td>
+                    </tr>
+                    <tr>
+                        <th>加入时间</th>
+                        <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>最后登录</th>
+                        <td>{{ user.last_login|date:"Y-m-d H:i"|default:"从未登录" }}</td>
+                    </tr>
+                </table>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i> 
+                    <strong>提示：</strong>如需修改个人信息，请联系管理员。
+                </div>
+                
+                <div class="text-center">
+                    <a href="{% url 'article_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 返回首页
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

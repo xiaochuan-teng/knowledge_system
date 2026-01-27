@@ -1,0 +1,22 @@
+# 日常开发推送三连
+git add .
+git commit -m "描述你的修改"
+git push
+
+# 查看状态
+git status
+
+# 查看修改内容
+git diff
+
+# 拉取最新代码
+git pull origin main
+
+# 创建新分支
+git checkout -b feature-branch
+
+# 切换分支
+git checkout main
+
+# 查看提交历史
+git log --oneline

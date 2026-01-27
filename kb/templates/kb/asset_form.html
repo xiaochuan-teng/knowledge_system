@@ -1,0 +1,705 @@
+<!-- templates/kb/asset_form.html -->
+{% extends 'kb/base.html' %}
+
+{% block title %}{{ title }} - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        background-color: #fff;
+    }
+    .section-title {
+        border-bottom: 2px solid #0d6efd;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        color: #495057;
+    }
+    .required-field::after {
+        content: " *";
+        color: red;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .credential-form, .photo-form {
+        background-color: #f8f9fa;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        border: 1px dashed #dee2e6;
+    }
+    .formset-title {
+        background-color: #e9ecef;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header {% if editing %}bg-warning{% else %}bg-success{% endif %} text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-{% if editing %}edit{% else %}plus{% endif %}"></i>
+                        {{ title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="assetForm">
+                        {% csrf_token %}
+
+                        <!-- 基本信息 -->
+                        <div class="form-section">
+                            <h5 class="section-title"><i class="fas fa-info-circle"></i> 基本信息</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.name.id_for_label }}" class="form-label required-field">
+                                            <i class="fas fa-tag"></i> 资产名称
+                                        </label>
+                                        {{ form.name }}
+                                        {% if form.name.errors %}
+                                        <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+                                        {% endif %}
+                                        <div class="form-text">请输入资产的完整名称</div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.asset_type.id_for_label }}" class="form-label required-field">
+                                            <i class="fas fa-box"></i> 资产类型
+                                        </label>
+                                        {{ form.asset_type }}
+                                        {% if form.asset_type.errors %}
+                                        <div class="text-danger small mt-1">{{ form.asset_type.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.brand.id_for_label }}" class="form-label">
+                                            <i class="fas fa-copyright"></i> 品牌
+                                        </label>
+                                        {{ form.brand }}
+                                        {% if form.brand.errors %}
+                                        <div class="text-danger small mt-1">{{ form.brand.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.model.id_for_label }}" class="form-label">
+                                            <i class="fas fa-cube"></i> 型号
+                                        </label>
+                                        {{ form.model }}
+                                        {% if form.model.errors %}
+                                        <div class="text-danger small mt-1">{{ form.model.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.serial_number.id_for_label }}" class="form-label">
+                                            <i class="fas fa-barcode"></i> 序列号
+                                        </label>
+                                        {{ form.serial_number }}
+                                        {% if form.serial_number.errors %}
+                                        <div class="text-danger small mt-1">{{ form.serial_number.errors }}</div>
+                                        {% endif %}
+                                        <div class="form-text">唯一标识，建议填写</div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.responsible_person.id_for_label }}" class="form-label required-field">
+                                            <i class="fas fa-user"></i> 负责人
+                                        </label>
+                                        {{ form.responsible_person }}
+                                        {% if form.responsible_person.errors %}
+                                        <div class="text-danger small mt-1">{{ form.responsible_person.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 网络信息 -->
+                        <div class="form-section">
+                            <h5 class="section-title"><i class="fas fa-network-wired"></i> 网络信息</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.ip_address.id_for_label }}" class="form-label">
+                                            <i class="fas fa-wifi"></i> IP地址
+                                        </label>
+                                        {{ form.ip_address }}
+                                        {% if form.ip_address.errors %}
+                                        <div class="text-danger small mt-1">{{ form.ip_address.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.mac_address.id_for_label }}" class="form-label">
+                                            <i class="fas fa-ethernet"></i> MAC地址
+                                        </label>
+                                        {{ form.mac_address }}
+                                        {% if form.mac_address.errors %}
+                                        <div class="text-danger small mt-1">{{ form.mac_address.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.version.id_for_label }}" class="form-label">
+                                            <i class="fas fa-code-branch"></i> 软件版本
+                                        </label>
+                                        {{ form.version }}
+                                        {% if form.version.errors %}
+                                        <div class="text-danger small mt-1">{{ form.version.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.license_expiry.id_for_label }}" class="form-label">
+                                            <i class="fas fa-calendar-times"></i> 许可到期时间
+                                        </label>
+                                        {{ form.license_expiry }}
+                                        {% if form.license_expiry.errors %}
+                                        <div class="text-danger small mt-1">{{ form.license_expiry.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 管理信息 -->
+                        <div class="form-section">
+                            <h5 class="section-title"><i class="fas fa-user-cog"></i> 管理信息</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.borrower.id_for_label }}" class="form-label">
+                                            <i class="fas fa-user-friends"></i> 借货人
+                                        </label>
+                                        {{ form.borrower }}
+                                        {% if form.borrower.errors %}
+                                        <div class="text-danger small mt-1">{{ form.borrower.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.status.id_for_label }}" class="form-label">
+                                            <i class="fas fa-power-off"></i> 状态
+                                        </label>
+                                        {{ form.status }}
+                                        {% if form.status.errors %}
+                                        <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.location.id_for_label }}" class="form-label">
+                                            <i class="fas fa-map-marker-alt"></i> 存放位置
+                                        </label>
+                                        {{ form.location }}
+                                        {% if form.location.errors %}
+                                        <div class="text-danger small mt-1">{{ form.location.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 配置和财务信息 -->
+                        <div class="form-section">
+                            <h5 class="section-title"><i class="fas fa-calculator"></i> 配置和财务信息</h5>
+                            <div class="form-group">
+                                <label for="{{ form.configuration.id_for_label }}" class="form-label">
+                                    <i class="fas fa-microchip"></i> 配置信息
+                                </label>
+                                {{ form.configuration }}
+                                {% if form.configuration.errors %}
+                                <div class="text-danger small mt-1">{{ form.configuration.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">如：CPU、内存、硬盘等详细配置</div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="{{ form.purchase_date.id_for_label }}" class="form-label">
+                                            <i class="fas fa-shopping-cart"></i> 购买日期
+                                        </label>
+                                        {{ form.purchase_date }}
+                                        {% if form.purchase_date.errors %}
+                                        <div class="text-danger small mt-1">{{ form.purchase_date.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="{{ form.purchase_price.id_for_label }}" class="form-label">
+                                            <i class="fas fa-money-bill-wave"></i> 购买价格(¥)
+                                        </label>
+                                        {{ form.purchase_price }}
+                                        {% if form.purchase_price.errors %}
+                                        <div class="text-danger small mt-1">{{ form.purchase_price.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="{{ form.warranty_expiry.id_for_label }}" class="form-label">
+                                            <i class="fas fa-calendar-check"></i> 保修到期
+                                        </label>
+                                        {{ form.warranty_expiry }}
+                                        {% if form.warranty_expiry.errors %}
+                                        <div class="text-danger small mt-1">{{ form.warranty_expiry.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 登录凭据表单集 -->
+                        <div class="form-section">
+                            <div class="formset-title">
+                                <h5><i class="fas fa-key"></i> 登录凭据</h5>
+                                <small class="text-muted">可以为资产添加多个登录凭据（如：管理员、用户等）</small>
+                            </div>
+
+                            {{ credential_formset.management_form }}
+
+                            <div id="credential-forms">
+                                {% for form in credential_formset %}
+                                <div class="credential-form">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label">凭据类型</label>
+                                                {{ form.credential_type }}
+                                                {% if form.credential_type.errors %}
+                                                <div class="text-danger small">{{ form.credential_type.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label">用户名</label>
+                                                {{ form.username }}
+                                                {% if form.username.errors %}
+                                                <div class="text-danger small">{{ form.username.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label">密码</label>
+                                                {{ form.password }}
+                                                {% if form.password.errors %}
+                                                <div class="text-danger small">{{ form.password.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <div class="form-group">
+                                                <label class="form-label">描述</label>
+                                                {{ form.description }}
+                                                {% if form.description.errors %}
+                                                <div class="text-danger small">{{ form.description.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-1">
+                                            <div class="form-group">
+                                                <label class="form-label">操作</label>
+                                                <div class="d-flex align-items-center" style="height: 38px;">
+                                                    {% if form.instance.pk %}
+                                                        {# 已有记录的删除复选框 #}
+                                                        <div class="form-check">
+                                                            {{ form.DELETE }}
+                                                            <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                                                删除
+                                                            </label>
+                                                        </div>
+                                                    {% else %}
+                                                        {# 新记录的删除按钮（隐藏默认表单的删除按钮） #}
+                                                        {% if forloop.counter0 > 0 %}
+                                                        <button type="button" class="btn btn-outline-danger btn-sm delete-form" onclick="removeCredentialForm(this)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ form.id }}
+                                    {% if form.instance.pk %}
+                                        <input type="hidden" name="{{ form.prefix }}-id" value="{{ form.instance.id }}">
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-credential">
+                                <i class="fas fa-plus"></i> 添加更多凭据
+                            </button>
+                        </div>
+
+                        <!-- 照片表单集 -->
+                        <div class="form-section">
+                            <div class="formset-title">
+                                <h5><i class="fas fa-images"></i> 资产照片</h5>
+                                <small class="text-muted">可以上传多张资产照片</small>
+                            </div>
+
+                            {{ photo_formset.management_form }}
+
+                            <div id="photo-forms">
+                                {% for form in photo_formset %}
+                                <div class="photo-form">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label">照片文件</label>
+                                                {{ form.photo }}
+                                                {% if form.photo.errors %}
+                                                <div class="text-danger small">{{ form.photo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-5">
+                                            <div class="form-group">
+                                                <label class="form-label">照片描述</label>
+                                                {{ form.description }}
+                                                {% if form.description.errors %}
+                                                <div class="text-danger small">{{ form.description.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-1">
+                                            <div class="form-group">
+                                                <label class="form-label">操作</label>
+                                                <div class="d-flex align-items-center" style="height: 38px;">
+                                                    {% if form.instance.pk %}
+                                                        {# 已有记录的删除复选框 #}
+                                                        <div class="form-check">
+                                                            {{ form.DELETE }}
+                                                            <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">
+                                                                删除
+                                                            </label>
+                                                        </div>
+                                                    {% else %}
+                                                        {# 新记录的删除按钮（隐藏默认表单的删除按钮） #}
+                                                        {% if forloop.counter0 > 0 %}
+                                                        <button type="button" class="btn btn-outline-danger btn-sm delete-form" onclick="removePhotoForm(this)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ form.id }}
+                                    {% if form.instance.pk %}
+                                        <input type="hidden" name="{{ form.prefix }}-id" value="{{ form.instance.id }}">
+                                    {% endif %}
+
+                                    {% if form.instance.photo %}
+                                    <div class="mt-2">
+                                        <small>已有照片:</small>
+                                        <img src="{{ form.instance.photo.url }}"
+                                             alt="已有照片"
+                                             style="max-width: 100px; max-height: 100px;"
+                                             class="img-thumbnail">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-photo">
+                                <i class="fas fa-plus"></i> 添加更多照片
+                            </button>
+                        </div>
+
+                        <!-- 备注 -->
+                        <div class="form-section">
+                            <h5 class="section-title"><i class="fas fa-sticky-note"></i> 备注</h5>
+                            <div class="form-group">
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                <div class="text-danger small mt-1">{{ form.notes.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">其他需要记录的信息</div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% if asset %}{% url 'asset_detail' asset.pk %}{% else %}{% url 'asset_list' %}{% endif %}"
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> 返回
+                            </a>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> {{ submit_text }}
+                                </button>
+                                {% if asset %}
+                                <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-danger ms-2">
+                                    <i class="fas fa-trash"></i> 删除资产
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 动态添加凭据表单
+    document.getElementById('add-credential').addEventListener('click', function() {
+        const formIndex = document.querySelectorAll('.credential-form').length;
+        const template = `
+            <div class="credential-form">
+                <div class="row">
+                    <div class="col-md-3">
+                        <select name="credentials-${formIndex}-credential_type" class="form-select" id="id_credentials-${formIndex}-credential_type">
+                            <option value="">---------</option>
+                            <option value="admin">管理员</option>
+                            <option value="user">普通用户</option>
+                            <option value="security_admin">安全管理员</option>
+                            <option value="sys_admin">系统管理员</option>
+                            <option value="root">Root</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="credentials-${formIndex}-username" class="form-control" placeholder="用户名">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="password" name="credentials-${formIndex}-password" class="form-control" placeholder="密码">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="credentials-${formIndex}-description" class="form-control" placeholder="描述">
+                    </div>
+                    <div class="col-md-1">
+                        <div class="form-group">
+                            <!--<label class="form-label">操作</label>-->
+                            <div class="d-flex align-items-center" style="height: 38px;">
+                                <button type="button" class="btn btn-outline-danger btn-sm delete-form" onclick="removeCredentialForm(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" name="credentials-${formIndex}-id" id="id_credentials-${formIndex}-id">
+            </div>
+        `;
+        document.getElementById('credential-forms').insertAdjacentHTML('beforeend', template);
+
+        // 更新表单集计数
+        const totalForms = document.getElementById('id_credentials-TOTAL_FORMS');
+        totalForms.value = parseInt(totalForms.value) + 1;
+    });
+
+    // 动态添加照片表单
+    document.getElementById('add-photo').addEventListener('click', function() {
+        const formIndex = document.querySelectorAll('.photo-form').length;
+        const template = `
+            <div class="photo-form">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="file" name="photos-${formIndex}-photo" class="form-control" accept="image/*">
+                    </div>
+                    <div class="col-md-5">
+                        <input type="text" name="photos-${formIndex}-description" class="form-control" placeholder="照片描述">
+                    </div>
+                    <div class="col-md-1">
+                        <div class="form-group">
+                            <!--<label class="form-label">操作</label>-->
+                            <div class="d-flex align-items-center" style="height: 38px;">
+                                <button type="button" class="btn btn-outline-danger btn-sm delete-form" onclick="removePhotoForm(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" name="photos-${formIndex}-id" id="id_photos-${formIndex}-id">
+            </div>
+        `;
+        document.getElementById('photo-forms').insertAdjacentHTML('beforeend', template);
+
+        // 更新表单集计数
+        const totalForms = document.getElementById('id_photos-TOTAL_FORMS');
+        totalForms.value = parseInt(totalForms.value) + 1;
+    });
+
+    // 删除凭据表单（针对新增的表单）
+    function removeCredentialForm(button) {
+        const formDiv = button.closest('.credential-form');
+        if (formDiv) {
+            // 获取表单索引
+            const inputs = formDiv.querySelectorAll('input[name^="credentials-"], select[name^="credentials-"]');
+            if (inputs.length > 0) {
+                const name = inputs[0].name;
+                const match = name.match(/credentials-(\d+)-/);
+                if (match) {
+                    const index = match[1];
+
+                    // 如果是已有记录，设置DELETE标记
+                    const deleteCheckbox = formDiv.querySelector(`input[name="credentials-${index}-DELETE"]`);
+                    if (deleteCheckbox) {
+                        deleteCheckbox.checked = true;
+                        formDiv.style.display = 'none';
+                    } else {
+                        // 如果是新表单，直接删除DOM元素
+                        formDiv.remove();
+                        // 更新表单索引
+                        updateFormIndexes('credentials', 'credential-forms');
+                    }
+                }
+            }
+        }
+    }
+
+    // 删除照片表单（针对新增的表单）
+    function removePhotoForm(button) {
+        const formDiv = button.closest('.photo-form');
+        if (formDiv) {
+            // 获取表单索引
+            const inputs = formDiv.querySelectorAll('input[name^="photos-"], select[name^="photos-"]');
+            if (inputs.length > 0) {
+                const name = inputs[0].name;
+                const match = name.match(/photos-(\d+)-/);
+                if (match) {
+                    const index = match[1];
+
+                    // 如果是已有记录，设置DELETE标记
+                    const deleteCheckbox = formDiv.querySelector(`input[name="photos-${index}-DELETE"]`);
+                    if (deleteCheckbox) {
+                        deleteCheckbox.checked = true;
+                        formDiv.style.display = 'none';
+                    } else {
+                        // 如果是新表单，直接删除DOM元素
+                        formDiv.remove();
+                        // 更新表单索引
+                        updateFormIndexes('photos', 'photo-forms');
+                    }
+                }
+            }
+        }
+    }
+
+    // 更新表单索引（针对新增表单被删除的情况）
+    function updateFormIndexes(prefix, containerId) {
+        const forms = document.querySelectorAll(`#${containerId} > .${prefix.replace('s', '')}-form`);
+        const totalForms = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+
+        if (forms.length > 0) {
+            forms.forEach((form, index) => {
+                // 更新所有输入字段的name和id属性
+                form.querySelectorAll('input, select, textarea').forEach(field => {
+                    if (field.name && field.name.startsWith(prefix)) {
+                        const oldName = field.name;
+                        const newName = oldName.replace(new RegExp(`${prefix}-\\d+`), `${prefix}-${index}`);
+                        field.name = newName;
+
+                        if (field.id) {
+                            field.id = field.id.replace(new RegExp(`${prefix}-\\d+`), `${prefix}-${index}`);
+                        }
+                    }
+                });
+            });
+        }
+
+        if (totalForms) {
+            totalForms.value = forms.length;
+        }
+    }
+
+    // 表单验证
+    document.getElementById('assetForm').addEventListener('submit', function(e) {
+        const requiredFields = document.querySelectorAll('.required-field');
+        let valid = true;
+
+        requiredFields.forEach(function(label) {
+            const fieldId = label.getAttribute('for');
+            const field = document.getElementById(fieldId);
+            if (field && !field.value.trim()) {
+                valid = false;
+                field.classList.add('is-invalid');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'invalid-feedback';
+                errorDiv.textContent = '此字段为必填项';
+                field.parentNode.appendChild(errorDiv);
+            }
+        });
+
+        if (!valid) {
+            e.preventDefault();
+            alert('请填写所有必填字段！');
+        }
+    });
+
+    // 清除错误样式
+    document.querySelectorAll('input, select, textarea').forEach(function(field) {
+        field.addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+            const errorDiv = this.parentNode.querySelector('.invalid-feedback');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+        });
+    });
+</script>
+{% endblock %}

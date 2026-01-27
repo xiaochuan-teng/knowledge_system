@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 交付部知识库</title>
+    <link href="/static/css/bootstrap-simple.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/bootstrap-simple.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0"><i class="fas fa-sign-in-alt"></i> 用户登录</h4>
+            </div>
+            <div class="card-body">
+                <!-- 原有的登录表单内容 -->
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    用户名或密码错误，请重试。
+                </div>
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">
+                            <i class="fas fa-user"></i> 用户名
+                        </label>
+                        <input type="text" name="username" class="form-control" 
+                               id="id_username" required autofocus>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">
+                            <i class="fas fa-lock"></i> 密码
+                        </label>
+                        <input type="password" name="password" class="form-control" 
+                               id="id_password" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> 登录
+                        </button>
+                    </div>
+                </form>
+                
+                <hr>
+                <div class="text-center">
+                    <p class="text-muted">
+                        <!--<i class="fas fa-info-circle"></i> 默认管理员账号：admin / Admin123!--->
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/bootstrap-simple.js"></script>
+</body>
+</html>

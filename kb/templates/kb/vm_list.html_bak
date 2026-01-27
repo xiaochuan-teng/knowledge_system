@@ -1,0 +1,375 @@
+<!-- kb/templates/kb/vm_list.html -->
+{% extends 'kb/base.html' %}
+
+{% block title %}虚拟机管理 - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 虚拟机列表页样式 */
+    .vm-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+
+    .vm-table th {
+        background-color: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .vm-table td {
+        padding: 12px;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+
+    .vm-table tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+
+    .status-running {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+
+    .status-stopped {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+
+    .status-maintenance {
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+
+    .accordion-button {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        font-weight: 500;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.3s;
+    }
+
+    .accordion-button:hover {
+        background-color: #e9ecef;
+    }
+
+    .accordion-content {
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        background-color: #fff;
+    }
+
+    .host-card {
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+        background-color: #fff;
+    }
+
+    .host-card h6 {
+        margin: 0 0 10px 0;
+        color: #495057;
+    }
+
+    .host-card p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+
+    /* 操作按钮组 */
+    .btn-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+    }
+
+    /* 搜索框样式 */
+    .search-container {
+        margin-bottom: 25px;
+    }
+
+    .search-input-group {
+        display: flex;
+        max-width: 500px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        border-right: none;
+        border-radius: 4px 0 0 4px;
+        font-size: 1rem;
+    }
+
+    .search-button {
+        padding: 10px 20px;
+        background-color: #0d6efd;
+        color: white;
+        border: 1px solid #0d6efd;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    /* 空状态样式 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+
+    .empty-state h5 {
+        margin-bottom: 10px;
+        color: #495057;
+    }
+
+    /* 响应式表格 */
+    @media (max-width: 768px) {
+        .vm-table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .vm-table th,
+        .vm-table td {
+            white-space: nowrap;
+            min-width: 120px;
+        }
+
+        .btn-group {
+            flex-direction: column;
+        }
+
+        .search-input-group {
+            flex-direction: column;
+        }
+
+        .search-input {
+            border-right: 1px solid #ced4da;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .search-button {
+            border-radius: 0 0 4px 4px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-server"></i> 虚拟机管理</h2>
+            <a href="{% url 'vm_create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> 添加虚拟机
+            </a>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" action="">
+                    <div class="input-group">
+                        <input type="text" class="form-control"
+                               placeholder="搜索虚拟机名称、IP或责任人..."
+                               name="q" value="{{ search_query }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> 搜索
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 虚拟机列表 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">虚拟机列表</h5>
+            </div>
+            <div class="card-body">
+                {% if vms %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>IP地址</th>
+                            <th>宿主机</th>
+                            <th>责任人</th>
+                            <th>配置</th>
+                            <th>系统</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for vm in vms %}
+                        <tr>
+                            <td><strong>{{ vm.name }}</strong></td>
+                            <td>{{ vm.ip_address }}</td>
+                            <td>{{ vm.host_machine.name }}</td>
+                            <td>{{ vm.owner.username|default:"未分配" }}</td>
+                            <td>{{ vm.cpu }}/{{ vm.memory }}/{{ vm.disk }}</td>
+                            <td>{{ vm.get_os_display }}</td>
+                            <td>
+                                {% if vm.status == 'running' %}
+                                <span class="badge bg-success">运行中</span>
+                                {% elif vm.status == 'stopped' %}
+                                <span class="badge bg-secondary">已停止</span>
+                                {% else %}
+                                <span class="badge bg-warning">维护中</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'vm_detail' vm.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> 查看
+                                </a>
+                                <a href="{% url 'vm_edit' vm.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i> 编辑
+                                </a>
+                                <form method="post" action="{% url 'vm_delete' vm.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('确定要删除吗？此操作不可撤销！')">
+                                    <i class="fas fa-trash"></i> 删除
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-server fa-4x mb-3" style="color: #ddd;"></i>
+                    <h5 class="text-muted">暂无虚拟机记录</h5>
+                    <p class="text-muted mb-4">点击"添加虚拟机"按钮开始记录</p>
+                    <a href="{% url 'vm_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 添加第一台虚拟机
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 按宿主机分组显示 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-network-wired"></i> 按宿主机分组</h5>
+            </div>
+            <div class="card-body">
+                {% if host_machines %}
+                <div class="accordion" id="hostAccordion">
+                    {% for host in host_machines %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#host{{ host.id }}">
+                                <i class="fas fa-desktop me-2"></i>
+                                {{ host.name }} ({{ host.ip_address }})
+                                <span class="badge bg-primary ms-2">{{ host.virtual_machines.count }} 台虚拟机</span>
+                            </button>
+                        </h2>
+                        <div id="host{{ host.id }}" class="accordion-collapse collapse"
+                             data-bs-parent="#hostAccordion">
+                            <div class="accordion-body">
+                                {% if host.virtual_machines.exists %}
+                                <div class="row">
+                                    {% for vm in host.virtual_machines.all %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h6>{{ vm.name }}</h6>
+                                                <p class="mb-1"><small>IP: {{ vm.ip_address }}</small></p>
+                                                <p class="mb-1"><small>责任人: {{ vm.owner.username|default:"-"
+                                                    }}</small></p>
+                                                <p class="mb-0"><small>状态:
+                                                    {% if vm.status == 'running' %}
+                                                    <span class="badge bg-success">运行中</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">已停止</span>
+                                                    {% endif %}
+                                                </small></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted">此宿主机上暂无虚拟机</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">暂无宿主机记录</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete(url, vmName) {
+        if (confirm(`确定要删除虚拟机 "${vmName}" 吗？此操作不可撤销！`)) {
+            // 创建隐藏表单提交
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+
+{% endblock %}

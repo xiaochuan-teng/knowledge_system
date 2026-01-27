@@ -1,0 +1,362 @@
+<!-- templates/kb/asset_list.html -->
+{% extends 'kb/base.html' %}
+
+{% block title %}资产管理 - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+    .asset-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    .asset-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .status-badge {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+    .stat-card {
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+    .filter-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .asset-type-icon {
+        font-size: 1.2em;
+        margin-right: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题和按钮 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-boxes"></i> 资产管理</h2>
+        <div>
+            <a href="{% url 'asset_create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> 添加资产
+            </a>
+            <a href="{% url 'export_assets' %}" class="btn btn-outline-secondary ms-2">
+                <i class="fas fa-download"></i> 导出数据
+            </a>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-primary text-white">
+            <h3>{{ total_count }}</h3>
+            <p class="mb-0">总资产数</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-success text-white">
+            <h3>{{ in_use_count }}</h3>
+            <p class="mb-0">使用中</p>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-info text-white">
+            <h3>
+                {% if most_common_type %}
+                    {{ most_common_type.count }}
+                {% else %}
+                    0
+                {% endif %}
+            </h3>
+            <p class="mb-0">
+                {% if most_common_type %}
+                    {{ most_common_type.asset_type }}
+                {% else %}
+                    资产
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card bg-warning text-white">
+            <h3>
+                {% if status_stats %}
+                    {% for stat in status_stats %}
+                        {% if stat.status != 'in_use' %}
+                            {{ stat.count }}
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    0
+                {% endif %}
+            </h3>
+            <p class="mb-0">其他状态</p>
+        </div>
+    </div>
+</div>
+
+    <!-- 搜索和筛选 -->
+    <div class="filter-card">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control"
+                       name="q" value="{{ search_query }}"
+                       placeholder="搜索资产名称、序列号、IP或负责人...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="type">
+                    <option value="">所有类型</option>
+                    {% for type_code, type_name in asset_types %}
+                    <option value="{{ type_code }}" {% if asset_type == type_code %}selected{% endif %}>
+                        {{ type_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="status">
+                    <option value="">所有状态</option>
+                    {% for status_code, status_name in status_choices %}
+                    <option value="{{ status_code }}" {% if status == status_code %}selected{% endif %}>
+                        {{ status_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control"
+                       name="responsible" value="{{ responsible }}"
+                       placeholder="负责人">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </div>
+        </form>
+
+        {% if search_query or asset_type or status or responsible or department %}
+        <div class="mt-3">
+            <small class="text-muted">
+                筛选条件:
+                {% if search_query %}<span class="badge bg-secondary">{{ search_query }}</span>{% endif %}
+                {% if asset_type %}<span class="badge bg-info">{{ asset_type }}</span>{% endif %}
+                {% if status %}<span class="badge bg-warning">{{ status }}</span>{% endif %}
+                {% if responsible %}<span class="badge bg-success">{{ responsible }}</span>{% endif %}
+                <a href="{% url 'asset_list' %}" class="ms-2 text-danger">
+                    <i class="fas fa-times"></i> 清除筛选
+                </a>
+            </small>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 资产列表 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">资产列表</h5>
+        </div>
+        <div class="card-body">
+            {% if page_obj.object_list %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>资产名称</th>
+                            <th>类型</th>
+                            <th>序列号</th>
+                            <th>IP地址</th>
+                            <th>负责人</th>
+                            <th>状态</th>
+                            <th>许可到期</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asset in page_obj %}
+                        <tr>
+                            <td>
+                                <strong>{{ asset.name }}</strong>
+                                {% if asset.brand %}
+                                <br><small class="text-muted">{{ asset.brand }} {{ asset.model }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <i class="fas fa-{{ asset.asset_type|default:'box' }} asset-type-icon"></i>
+                                {{ asset.get_asset_type_display }}
+                            </td>
+                            <td>{{ asset.serial_number|default:"-" }}</td>
+                            <td>{{ asset.ip_address|default:"-" }}</td>
+                            <td>{{ asset.responsible_person }}</td>
+                            <td>
+                                {% if asset.status == 'in_use' %}
+                                <span class="badge bg-success">使用中</span>
+                                {% elif asset.status == 'idle' %}
+                                <span class="badge bg-secondary">闲置</span>
+                                {% elif asset.status == 'maintenance' %}
+                                <span class="badge bg-warning">维护中</span>
+                                {% elif asset.status == 'retired' %}
+                                <span class="badge bg-danger">已报废</span>
+                                {% else %}
+                                <span class="badge bg-info">已借出</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if asset.license_expiry %}
+                                    {% if asset.license_expiry < today %}
+                                    <span class="text-danger">{{ asset.license_expiry|date:"Y-m-d" }}</span>
+                                    {% else %}
+                                    {{ asset.license_expiry|date:"Y-m-d" }}
+                                    {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ asset.created_at|date:"Y-m-d" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'asset_detail' asset.pk %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'asset_edit' asset.pk %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav aria-label="分页导航" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if asset_type %}&type={{ asset_type }}{% endif %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if asset_type %}&type={{ asset_type }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if asset_type %}&type={{ asset_type }}{% endif %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-boxes fa-4x mb-3" style="color: #ddd;"></i>
+                <h5 class="text-muted">暂无资产记录</h5>
+                <p class="text-muted mb-4">点击"添加资产"按钮开始记录</p>
+                <a href="{% url 'asset_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 添加第一项资产
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 统计图表 -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> 资产类型分布</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        {% for stat in type_stats|slice:":5" %}
+                        <li class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ stat.asset_type }}</span>
+                                <span class="badge bg-primary">{{ stat.count }}</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: {% widthratio stat.count total_count 100 %}%"></div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar"></i> 资产状态分布</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        {% for stat in status_stats %}
+                        <li class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ stat.status }}</span>
+                                <span class="badge {% if stat.status == 'in_use' %}bg-success{% elif stat.status == 'idle' %}bg-secondary{% elif stat.status == 'maintenance' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ stat.count }}
+                                </span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 获取今天日期用于许可到期检查
+    const today = new Date().toISOString().split('T')[0];
+
+    // 高亮即将到期的许可
+    document.addEventListener('DOMContentLoaded', function() {
+        const licenseCells = document.querySelectorAll('td:nth-child(7)');
+        licenseCells.forEach(cell => {
+            const licenseDate = cell.textContent.trim();
+            if (licenseDate && licenseDate !== '-') {
+                const daysDiff = Math.floor((new Date(licenseDate) - new Date()) / (1000 * 60 * 60 * 24));
+                if (daysDiff < 30 && daysDiff >= 0) {
+                    cell.innerHTML = `<span class="badge bg-warning">${licenseDate} (还有${daysDiff}天)</span>`;
+                } else if (daysDiff < 0) {
+                    cell.innerHTML = `<span class="badge bg-danger">${licenseDate} (已过期)</span>`;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

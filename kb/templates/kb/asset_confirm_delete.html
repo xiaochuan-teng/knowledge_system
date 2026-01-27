@@ -1,0 +1,86 @@
+<!-- templates/kb/asset_confirm_delete.html -->
+{% extends 'kb/base.html' %}
+
+{% block title %}删除资产确认 - 交付部知识库{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-lg border-danger">
+            <div class="card-header bg-danger text-white text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <h3 class="mb-0">删除资产确认</h3>
+            </div>
+            <div class="card-body text-center py-5">
+                <!-- 资产信息卡片 -->
+                <div class="card mb-4 border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">
+                            <i class="fas fa-box"></i> {{ asset.name }}
+                        </h5>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <p class="mb-1"><strong>资产类型</strong></p>
+                                <p class="text-muted">{{ asset.get_asset_type_display }}</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="mb-1"><strong>序列号</strong></p>
+                                <p class="text-muted">{{ asset.serial_number|default:"-" }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <p class="mb-1"><strong>负责人</strong></p>
+                                <p class="text-muted">{{ asset.responsible_person }}</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="mb-1"><strong>状态</strong></p>
+                                <p class="text-muted">{{ asset.get_status_display }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 警告信息 -->
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading">
+                        <i class="fas fa-exclamation-circle"></i> 重要警告！
+                    </h5>
+                    <p class="mb-2">您即将删除以下资产：</p>
+                    <ul class="text-start">
+                        <li>资产名称：<strong>{{ asset.name }}</strong></li>
+                        <li>资产类型：<strong>{{ asset.get_asset_type_display }}</strong></li>
+                        <li>负责人：<strong>{{ asset.responsible_person }}</strong></li>
+                    </ul>
+                    <hr>
+                    <p class="mb-0">
+                        <strong>此操作不可撤销！</strong> 所有资产信息、登录凭据和照片将被永久删除。
+                    </p>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="fas fa-trash"></i> 确认删除
+                        </button>
+                    </form>
+                    <a href="{% url 'asset_detail' asset.pk %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> 取消返回
+                    </a>
+                </div>
+
+                <!-- 安全建议 -->
+                <div class="alert alert-light mt-4">
+                    <h6><i class="fas fa-lightbulb"></i> 安全建议：</h6>
+                    <p class="mb-0 small">
+                        在删除前，建议先备份重要信息或确认资产已不再使用。
+                        如有疑问，请联系系统管理员。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

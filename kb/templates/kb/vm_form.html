@@ -1,0 +1,216 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}{{ vm|yesno:"编辑,创建" }}虚拟机 - 交付部知识库{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header {% if vm %}bg-warning{% else %}bg-success{% endif %} text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-{% if vm %}edit{% else %}plus{% endif %}"></i> 
+                    {{ vm|yesno:"编辑虚拟机信息,创建新虚拟机" }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- 基本信息 -->
+                    <h5 class="mb-3 border-bottom pb-2">
+                        <i class="fas fa-info-circle"></i> 基本信息
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_name" class="form-label required-field">
+                                <i class="fas fa-tag"></i> 虚拟机名称
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">唯一标识，如：vm-web-01</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_ip_address" class="form-label required-field">
+                                <i class="fas fa-network-wired"></i> IP地址
+                            </label>
+                            {{ form.ip_address }}
+                            {% if form.ip_address.errors %}
+                            <div class="text-danger small mt-1">{{ form.ip_address.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">如：192.168.1.100</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_host_machine" class="form-label required-field">
+                                <i class="fas fa-desktop"></i> 所属宿主机
+                            </label>
+                            {{ form.host_machine }}
+                            {% if form.host_machine.errors %}
+                            <div class="text-danger small mt-1">{{ form.host_machine.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_owner" class="form-label">
+                                <i class="fas fa-user"></i> 责任人
+                            </label>
+                            {{ form.owner }}
+                            {% if form.owner.errors %}
+                            <div class="text-danger small mt-1">{{ form.owner.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 硬件配置 -->
+                    <h5 class="mb-3 mt-4 border-bottom pb-2">
+                        <i class="fas fa-microchip"></i> 硬件配置
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="id_cpu" class="form-label required-field">
+                                <i class="fas fa-microchip"></i> CPU配置
+                            </label>
+                            {{ form.cpu }}
+                            {% if form.cpu.errors %}
+                            <div class="text-danger small mt-1">{{ form.cpu.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">如：4核</div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="id_memory" class="form-label required-field">
+                                <i class="fas fa-memory"></i> 内存配置
+                            </label>
+                            {{ form.memory }}
+                            {% if form.memory.errors %}
+                            <div class="text-danger small mt-1">{{ form.memory.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">如：8GB</div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="id_disk" class="form-label required-field">
+                                <i class="fas fa-hdd"></i> 磁盘配置
+                            </label>
+                            {{ form.disk }}
+                            {% if form.disk.errors %}
+                            <div class="text-danger small mt-1">{{ form.disk.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">如：100GB</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 系统信息 -->
+                    <h5 class="mb-3 mt-4 border-bottom pb-2">
+                        <i class="fas fa-laptop-code"></i> 系统信息
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_os" class="form-label required-field">
+                                <i class="fas fa-linux"></i> 操作系统
+                            </label>
+                            {{ form.os }}
+                            {% if form.os.errors %}
+                            <div class="text-danger small mt-1">{{ form.os.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_os_version" class="form-label">
+                                <i class="fas fa-code-branch"></i> 系统版本
+                            </label>
+                            {{ form.os_version }}
+                            {% if form.os_version.errors %}
+                            <div class="text-danger small mt-1">{{ form.os_version.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">如：CentOS 7.9</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_status" class="form-label">
+                                <i class="fas fa-power-off"></i> 运行状态
+                            </label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                            <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 其他信息 -->
+                    <h5 class="mb-3 mt-4 border-bottom pb-2">
+                        <i class="fas fa-sticky-note"></i> 其他信息
+                    </h5>
+                    <div class="mb-3">
+                        <label for="id_purpose" class="form-label">
+                            <i class="fas fa-bullseye"></i> 用途描述
+                        </label>
+                        {{ form.purpose }}
+                        {% if form.purpose.errors %}
+                        <div class="text-danger small mt-1">{{ form.purpose.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">虚拟机的具体用途，如：Web服务器、数据库服务器等</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_notes" class="form-label">
+                            <i class="fas fa-notes-medical"></i> 备注
+                        </label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <div class="text-danger small mt-1">{{ form.notes.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">其他需要记录的信息</div>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% if vm %}{% url 'vm_detail' vm.pk %}{% else %}{% url 'vm_list' %}{% endif %}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> {{ vm|yesno:"保存修改,创建虚拟机" }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 创建宿主机提示 -->
+        {% if not vm %}
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="alert alert-info mb-0">
+                    <h6><i class="fas fa-lightbulb"></i> 提示：</h6>
+                    <p class="mb-0">
+                        如果没有找到合适的宿主机，请先联系管理员在 
+                        <a href="/admin/kb/hostmachine/add/" target="_blank" class="alert-link">管理后台</a> 
+                        创建宿主机记录。
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .required-field::after {
+        content: " *";
+        color: red;
+    }
+    .border-bottom {
+        border-color: #dee2e6 !important;
+    }
+</style>
+{% endblock %}

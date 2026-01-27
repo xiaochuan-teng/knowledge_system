@@ -1,0 +1,369 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}{{ vm.name }} - 虚拟机详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vm-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        padding: 30px;
+        color: white;
+        margin-bottom: 30px;
+    }
+
+    .info-card {
+        transition: transform 0.3s;
+        height: 100%;
+    }
+
+    .info-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .status-badge {
+        font-size: 0.9em;
+        padding: 5px 10px;
+    }
+
+    .spec-icon {
+        font-size: 1.5em;
+        width: 40px;
+        text-align: center;
+    }
+
+    .spec-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 虚拟机头部信息 -->
+    <div class="vm-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 mb-3">
+                    <i class="fas fa-server"></i> {{ vm.name }}
+                </h1>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge status-badge bg-light text-dark">
+                        <i class="fas fa-tag"></i> {{ vm.get_os_display }}
+                    </span>
+                    {% if vm.status == 'running' %}
+                    <span class="badge status-badge bg-success">
+                        <i class="fas fa-play-circle"></i> 运行中
+                    </span>
+                    {% elif vm.status == 'stopped' %}
+                    <span class="badge status-badge bg-secondary">
+                        <i class="fas fa-stop-circle"></i> 已停止
+                    </span>
+                    {% else %}
+                    <span class="badge status-badge bg-warning">
+                        <i class="fas fa-tools"></i> 维护中
+                    </span>
+                    {% endif %}
+                    <span class="badge status-badge bg-info">
+                        <i class="fas fa-network-wired"></i> {{ vm.ip_address }}
+                    </span>
+                </div>
+                <p class="lead mb-0">
+                    <i class="fas fa-user"></i> 责任人：{{ vm.owner.username|default:"未分配" }}
+                    <span class="mx-3">|</span>
+                    <i class="fas fa-calendar"></i> 创建时间：{{ vm.created_at|date:"Y-m-d H:i" }}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <a href="{% url 'vm_edit' vm.pk %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> 编辑
+                    </a>
+                    <button type="button" class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                            data-bs-toggle="dropdown">
+                        <span class="visually-hidden">更多操作</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="copyToClipboard('{{ vm.ip_address }}')">
+                                <i class="fas fa-copy"></i> 复制IP
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'vm_list' %}?q={{ vm.name }}">
+                                <i class="fas fa-search"></i> 搜索同类
+                            </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="#"
+                               data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash"></i> 删除虚拟机
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要信息 -->
+    <div class="row mb-4">
+        <!-- 硬件配置 -->
+        <div class="col-md-4 mb-4">
+            <div class="card info-card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-microchip"></i> 硬件配置</h5>
+                </div>
+                <div class="card-body">
+                    <div class="spec-item">
+                        <div class="spec-icon text-primary">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">CPU</h6>
+                            <p class="mb-0 text-muted">{{ vm.cpu }}</p>
+                        </div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-icon text-success">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">内存</h6>
+                            <p class="mb-0 text-muted">{{ vm.memory }}</p>
+                        </div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-icon text-warning">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">磁盘</h6>
+                            <p class="mb-0 text-muted">{{ vm.disk }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统信息 -->
+        <div class="col-md-4 mb-4">
+            <div class="card info-card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-laptop-code"></i> 系统信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="spec-item">
+                        <div class="spec-icon text-info">
+                            <i class="fas fa-linux"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">操作系统</h6>
+                            <p class="mb-0 text-muted">{{ vm.get_os_display }}</p>
+                        </div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-icon text-secondary">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">系统版本</h6>
+                            <p class="mb-0 text-muted">{{ vm.os_version|default:"未指定" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-icon">
+                            <i class="fas fa-power-off"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">运行状态</h6>
+                            <p class="mb-0">
+                                {% if vm.status == 'running' %}
+                                <span class="badge bg-success">运行中</span>
+                                {% elif vm.status == 'stopped' %}
+                                <span class="badge bg-secondary">已停止</span>
+                                {% else %}
+                                <span class="badge bg-warning">维护中</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理信息 -->
+        <div class="col-md-4 mb-4">
+            <div class="card info-card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-cog"></i> 管理信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="spec-item">
+                        <div class="spec-icon text-primary">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">责任人</h6>
+                            <p class="mb-0 text-muted">{{ vm.owner.username|default:"未分配" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-icon text-success">
+                            <i class="fas fa-desktop"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">所属宿主机</h6>
+                            <p class="mb-0 text-muted">
+                                {{ vm.host_machine.name }}
+                                <small class="d-block text-muted">{{ vm.host_machine.ip_address }}</small>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="spec-item">
+                        <div class="spec-icon text-warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-1">更新时间</h6>
+                            <p class="mb-0 text-muted">{{ vm.updated_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 描述和备注 -->
+    <div class="row">
+        <!-- 用途描述 -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-bullseye"></i> 用途描述</h5>
+                </div>
+                <div class="card-body">
+                    {% if vm.purpose %}
+                    <p class="card-text">{{ vm.purpose|linebreaks }}</p>
+                    {% else %}
+                    <p class="text-muted text-center py-4">暂无用途描述</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 备注 -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-notes-medical"></i> 备注</h5>
+                </div>
+                <div class="card-body">
+                    {% if vm.notes %}
+                    <p class="card-text">{{ vm.notes|linebreaks }}</p>
+                    {% else %}
+                    <p class="text-muted text-center py-4">暂无备注信息</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{% url 'vm_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> 返回列表
+                            </a>
+                            <a href="{% url 'vm_edit' vm.pk %}" class="btn btn-primary ms-2">
+                                <i class="fas fa-edit"></i> 编辑信息
+                            </a>
+                            <a href="{% url 'vm_list' %}?host={{ vm.host_machine.id }}" class="btn btn-info ms-2">
+                                <i class="fas fa-desktop"></i> 查看同宿主机
+                            </a>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-danger"
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash"></i> 删除虚拟机
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> 删除确认
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6>您确定要删除这台虚拟机吗？</h6>
+                    <p class="mb-0"><strong>"{{ vm.name }}" ({{ vm.ip_address }})</strong></p>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>警告：</strong>此操作不可恢复！所有相关配置信息将被永久删除。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <form method="post" action="{% url 'vm_delete' vm.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> 确认删除
+                    </button>
+                </form>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 复制IP地址到剪贴板
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+            alert('已复制IP地址: ' + text);
+        }, function (err) {
+            console.error('复制失败: ', err);
+        });
+    }
+
+    // 页面加载时的一些初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        // 可以在这里添加页面特定的JavaScript代码
+        console.log('虚拟机详情页加载完成');
+    });
+</script>
+{% endblock %}

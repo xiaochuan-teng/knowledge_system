@@ -1,0 +1,383 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}{{ title|default:"创建文章" }} - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 表单页面样式 */
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+.form-label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+}
+.ck-editor-wrapper {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+.attachment-preview {
+    border: 1px dashed #ccc;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 10px;
+    background-color: #f9f9f9;
+}
+.attachment-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+}
+.attachment-list li {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.attachment-list li:last-child {
+    border-bottom: none;
+}
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+.form-section:last-child {
+    border-bottom: none;
+}
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #007bff;
+}
+
+/* 表单控件样式 */
+.form-control, .form-select {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    width: 100%;
+}
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+.form-check-input {
+    margin-right: 8px;
+}
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+/* CKEditor 5 自定义样式 */
+.django_ckeditor_5 {
+    min-height: 300px;
+}
+.ck-editor__editable {
+    min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    vertical-align: middle;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+.btn-primary {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+.btn-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+.btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+}
+.btn-success {
+    color: #fff;
+    background-color: #198754;
+    border-color: #198754;
+}
+.btn-success:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+.btn-outline-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+    background-color: transparent;
+}
+.btn-outline-primary:hover {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .form-container {
+        padding: 0 15px;
+    }
+    .row {
+        flex-direction: column;
+    }
+    .col-md-6, .col-md-4, .col-md-3 {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-edit"></i> {{ title|default:"创建新文章" }}</h4>
+        </div>
+        <div class="card-body">
+            {{ form.media }}
+            <form method="post" enctype="multipart/form-data" id="article-form">
+                {% csrf_token %}
+
+                <div class="mb-4">
+                    <label for="id_title" class="form-label required-field">
+                        <i class="fas fa-heading"></i> 文章标题
+                    </label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                    <div class="text-danger small mt-1">{{ form.title.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <label for="id_content" class="form-label required-field">
+                        <i class="fas fa-file-alt"></i> 文章内容
+                    </label>
+                    <div class="alert alert-info small">
+                        <i class="fas fa-info-circle"></i> 支持插入图片、表格、代码等格式。图片可以直接粘贴或上传。
+                    </div>
+                    {{ form.content }}
+                    {% if form.content.errors %}
+                    <div class="text-danger small mt-1">{{ form.content.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_article_type" class="form-label required-field">
+                            <i class="fas fa-tag"></i> 问题类型
+                        </label>
+                        {{ form.article_type }}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><i class="fas fa-check-circle"></i> 问题状态</label>
+                        <div class="form-check form-switch mt-2">
+                            {{ form.is_resolved }}
+                            <label class="form-check-label" for="id_is_resolved">
+                                <span id="status-text">问题已解决</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_product_version" class="form-label">
+                            <i class="fas fa-code-branch"></i> 产品版本
+                        </label>
+                        {{ form.product_version }}
+                        <div class="form-text">留空表示不涉及特定版本</div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="id_project_name" class="form-label">
+                            <i class="fas fa-project-diagram"></i> 项目名称
+                        </label>
+                        {{ form.project_name }}
+                        <div class="form-text">留空表示通用问题</div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="id_tags" class="form-label">
+                        <i class="fas fa-tags"></i> 标签
+                    </label>
+                    {{ form.tags }}
+                    <div class="form-text">多个标签用逗号分隔，如：网络,故障,紧急,CentOS</div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="id_attachments" class="form-label">
+                        <i class="fas fa-paperclip"></i> 上传附件
+                    </label>
+                    <input type="file" name="attachments" id="id_attachments"
+                           class="form-control" multiple
+                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar">
+                    <div class="form-text">支持图片、文档、压缩包等格式。可同时选择多个文件。</div>
+
+                    {% if editing and article.attachments.exists %}
+                    <div class="attachment-preview mt-3">
+                        <h6><i class="fas fa-file"></i> 已有附件：</h6>
+                        <ul class="list-group list-group-flush">
+                            {% for attachment in article.attachments.all %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-file-{{ attachment.is_image|yesno:'image,archive' }}"></i>
+                                    {{ attachment.file_name }}
+                                    <small class="text-muted">({{ attachment.uploaded_at|date:"Y-m-d" }})</small>
+                                </div>
+                                <a href="{{ attachment.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-download"></i> 下载
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% if editing %}{% url 'article_detail' article.pk %}{% else %}{% url 'article_list' %}{% endif %}"
+                       class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 返回
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {{ submit_text|default:"提交" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 问题状态切换
+document.getElementById('id_is_resolved').addEventListener('change', function() {
+    const statusText = document.getElementById('status-text');
+    statusText.textContent = this.checked ? '问题已解决' : '问题待解决';
+});
+
+// 表单验证（适配 CKEditor 5）
+document.getElementById('article-form').addEventListener('submit', function(e) {
+    const title = document.getElementById('id_title').value.trim();
+
+    // CKEditor 5 获取内容的方式
+    let content = '';
+    const editorElement = document.querySelector('.ck-editor__editable');
+    if (editorElement) {
+        content = editorElement.innerHTML.trim();
+    } else {
+        // 备用方案：尝试获取 textarea 的值
+        const textarea = document.querySelector('textarea[name="content"]');
+        if (textarea) {
+            content = textarea.value.trim();
+        }
+    }
+
+    if (!title) {
+        e.preventDefault();
+        alert('请填写文章标题！');
+        document.getElementById('id_title').focus();
+        return false;
+    }
+
+    // 检查内容是否为空（排除空的段落标签）
+    if (!content || content === '<p>&nbsp;</p>' || content === '<p><br data-cke-filler="true"></p>' || content === '<p></p>') {
+        e.preventDefault();
+        alert('请填写文章内容！');
+        // 聚焦到编辑器
+        if (editorElement) {
+            editorElement.focus();
+        }
+        return false;
+    }
+
+    return true;
+});
+
+// 可选：自动保存草稿功能
+let autoSaveTimer = null;
+function setupAutoSave() {
+    const titleInput = document.getElementById('id_title');
+    const form = document.getElementById('article-form');
+
+    // 每30秒检查是否有内容变更
+    [titleInput].forEach(element => {
+        if (element) {
+            element.addEventListener('input', () => {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(() => {
+                    // 这里可以添加自动保存逻辑
+                    console.log('内容已变更，可以添加自动保存功能');
+                }, 30000); // 30秒
+            });
+        }
+    });
+
+    // 监听编辑器内容变化
+    const editorElement = document.querySelector('.ck-editor__editable');
+    if (editorElement) {
+        editorElement.addEventListener('input', () => {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                console.log('编辑器内容已变更，可以添加自动保存功能');
+            }, 30000);
+        });
+    }
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化自动保存（可选）
+    // setupAutoSave();
+
+    // 如果有问题状态切换，确保初始状态正确
+    const isResolvedCheckbox = document.getElementById('id_is_resolved');
+    if (isResolvedCheckbox) {
+        const statusText = document.getElementById('status-text');
+        if (statusText) {
+            statusText.textContent = isResolvedCheckbox.checked ? '问题已解决' : '问题待解决';
+        }
+    }
+});
+</script>
+{% endblock %}

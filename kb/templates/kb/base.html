@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}交付部知识库{% endblock %}</title>
+    <!-- 使用本地Bootstrap -->
+    <link href="/static/css/bootstrap-simple.css" rel="stylesheet">
+    <!-- 简单的图标替代 -->
+    <style>
+        /* Font Awesome 图标替代 */
+        .fa, .fas, .far, .fal, .fad, .fab {
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .fa-home:before { content: "🏠"; }
+        .fa-book:before { content: "📚"; }
+        .fa-server:before { content: "🖥️"; }
+        .fa-tachometer-alt:before { content: "📊"; }
+        .fa-info-circle:before { content: "ℹ️"; }
+        .fa-user:before { content: "👤"; }
+        .fa-users:before { content: "👥"; }
+        .fa-cog:before { content: "⚙️"; }
+        .fa-tools:before { content: "🔧"; }
+        .fa-sign-out-alt:before { content: "🚪"; }
+        .fa-sign-in-alt:before { content: "🔑"; }
+        .fa-arrow-left:before { content: "←"; }
+        .fa-plus:before { content: "➕"; }
+        .fa-edit:before { content: "✏️"; }
+        .fa-trash:before { content: "🗑️"; }
+        .fa-eye:before { content: "👁️"; }
+        .fa-search:before { content: "🔍"; }
+        .fa-filter:before { content: "🔧"; }
+        .fa-download:before { content: "⬇️"; }
+        .fa-save:before { content: "💾"; }
+        .fa-times:before { content: "✖️"; }
+        .fa-check:before { content: "✓"; }
+        .fa-exclamation-triangle:before { content: "⚠️"; }
+        .fa-lightbulb:before { content: "💡"; }
+        .fa-comments:before { content: "💬"; }
+        .fa-paperclip:before { content: "📎"; }
+        .fa-calendar:before { content: "📅"; }
+        .fa-sync-alt:before { content: "🔄"; }
+        .fa-tags:before { content: "🏷️"; }
+        .fa-file-alt:before { content: "📄"; }
+        .fa-heading:before { content: "📝"; }
+        .fa-tag:before { content: "🏷️"; }
+        .fa-check-circle:before { content: "✅"; }
+        .fa-code-branch:before { content: "🌿"; }
+        .fa-project-diagram:before { content: "🔗"; }
+        .fa-bolt:before { content: "⚡"; }
+        .fa-list:before { content: "📋"; }
+        .fa-microchip:before { content: "🖥️"; }
+        .fa-memory:before { content: "🧠"; }
+        .fa-hdd:before { content: "💿"; }
+        .fa-linux:before { content: "🐧"; }
+        .fa-power-off:before { content: "⏻"; }
+        .fa-bullseye:before { content: "🎯"; }
+        .fa-notes-medical:before { content: "📝"; }
+        .fa-clock:before { content: "⏰"; }
+        .fa-desktop:before { content: "🖥️"; }
+        .fa-user-cog:before { content: "👨‍💼"; }
+        .fa-newspaper:before { content: "📰"; }
+        .fa-chart-pie:before { content: "📊"; }
+        .fa-chart-line:before { content: "📈"; }
+        .fa-network-wired:before { content: "🔌"; }
+        .fa-laptop:before { content: "💻"; }
+        .fa-box:before { content: "📦"; }
+        .fa-vial:before { content: "🧪"; }
+        .fa-bug:before { content: "🐛"; }
+        .fa-ellipsis-h:before { content: "⋯"; }
+        .fa-comment-dots:before { content: "💭"; }
+        .fa-paper-plane:before { content: "✈️"; }
+        .fa-comment-slash:before { content: "🚫"; }
+        .fa-user-circle:before { content: "👤"; }
+        .fa-id-card:before { content: "🪪"; }
+        .fa-calendar-plus:before { content: "📅+"; }
+        .fa-calendar-check:before { content: "📅✓"; }
+        .fa-chevron-left:before { content: "‹"; }
+        .fa-chevron-right:before { content: "›"; }
+        .fa-file-image:before { content: "🖼️"; }
+        .fa-file-archive:before { content: "📦"; }
+
+        /* 基础样式 */
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .content-container {
+            margin-top: 20px;
+            min-height: 70vh;
+        }
+        .footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            color: #6c757d;
+        }
+        .user-role-badge {
+            font-size: 0.7em;
+            padding: 2px 6px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'article_list' %}">
+                📚 交付部知识库
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'article_list' %}">
+                            🏠 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'vm_list' %}">
+                            🖥️ 虚拟机管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+            <a class="nav-link" href="{% url 'asset_list' %}">
+                📦 资产管理
+            </a>
+        </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'dashboard' %}">
+                            📊 仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'about' %}">
+                            ℹ️ 关于
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown"
+                               role="button" data-bs-toggle="dropdown">
+                                👤 {{ user.username }}
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger user-role-badge">管理员</span>
+                                {% else %}
+                                <span class="badge bg-info user-role-badge">用户</span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'profile' %}">
+                                    👤 个人资料
+                                </a></li>
+                                {% if user.is_authenticated and user.role == 'admin' %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'user_list' %}">
+                                    👥 用户管理
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'system_settings' %}">
+                                    ⚙️ 系统设置
+                                </a></li>
+                                <li><a class="dropdown-item" href="/admin/" target="_blank">
+                                    🔧 管理后台
+                                </a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'logout' %}">
+                                    🚪 退出登录
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">
+                                🔑 登录
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="container content-container">
+        <!-- 消息提示 -->
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                ℹ️ {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- 页面内容 -->
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 交付部知识库系统 v1.0</p>
+            <p class="text-muted small">
+                👥 技术支持：交付部内部开发 |
+                📧 联系：交付部
+            </p>
+        </div>
+    </footer>
+
+    <!-- 使用本地Bootstrap JS -->
+    <script src="/static/js/bootstrap-simple.js"></script>
+
+    <!-- 自定义JS -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

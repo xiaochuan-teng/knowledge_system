@@ -1,0 +1,43 @@
+<!-- 侧边栏组件 -->
+<div class="sidebar">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="fas fa-chart-bar"></i> 数据统计</h6>
+        </div>
+        <div class="card-body">
+            <ul class="list-unstyled mb-0">
+                <li class="mb-2">
+                    <i class="fas fa-book text-primary"></i>
+                    文章总数: <strong>{{ total_articles|default:0 }}</strong>
+                </li>
+                <li class="mb-2">
+                    <i class="fas fa-server text-success"></i>
+                    虚拟机总数: <strong>{{ total_vms|default:0 }}</strong>
+                </li>
+                <li class="mb-2">
+                    <i class="fas fa-users text-info"></i>
+                    用户总数: <strong>{{ total_users|default:0 }}</strong>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="fas fa-link"></i> 快速链接</h6>
+        </div>
+        <div class="card-body">
+            <div class="d-grid gap-2">
+                <a href="{% url 'article_create' %}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-plus"></i> 新建文章
+                </a>
+                <a href="{% url 'vm_create' %}" class="btn btn-outline-success btn-sm">
+                    <i class="fas fa-plus"></i> 添加虚拟机
+                </a>
+                <a href="{% url 'export_articles' %}" class="btn btn-outline-info btn-sm">
+                    <i class="fas fa-download"></i> 导出数据
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,39 @@
+ngo
+*.pyc
+__pycache__/
+db.sqlite3
+*.log
+*.log-*
+
+# Virtual environment
+venv/
+env/
+.env
+myenv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 敏感信息
+*.env
+*.key
+secrets.py
+
+# 静态文件收集（生产环境会自动生成）
+staticfiles/
+
+# 媒体文件
+media/
+
+# 日志
+log/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 其他
+*.sqlite3-journal

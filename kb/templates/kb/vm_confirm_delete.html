@@ -1,0 +1,289 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}删除虚拟机确认 - 交付部知识库{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 页面通用样式 */
+.page-container {
+    padding: 20px 0;
+}
+
+/* 卡片样式 */
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.card-header {
+    background-color: #f8f9fa;
+    padding: 15px 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+.card-header h5 {
+    margin: 0;
+    color: #495057;
+    font-weight: 600;
+}
+.card-body {
+    padding: 20px;
+}
+
+/* 表格样式 */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.table th {
+    background-color: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+.table tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 表单样式 */
+.form-group {
+    margin-bottom: 20px;
+}
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+}
+.form-control {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+.form-control:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* 按钮样式 */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+.btn-primary {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+.btn-secondary {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+.btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+}
+.btn-danger {
+    color: #fff;
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+}
+
+/* 徽章样式 */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.75em;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 4px;
+}
+.bg-primary { background-color: #0d6efd; color: white; }
+.bg-success { background-color: #198754; color: white; }
+.bg-info { background-color: #0dcaf0; color: white; }
+.bg-warning { background-color: #ffc107; color: #212529; }
+.bg-danger { background-color: #dc3545; color: white; }
+.bg-secondary { background-color: #6c757d; color: white; }
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .page-container {
+        padding: 10px;
+    }
+    .card-body {
+        padding: 15px;
+    }
+    .table {
+        display: block;
+        overflow-x: auto;
+    }
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-lg border-danger">
+            <div class="card-header bg-danger text-white text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <h3 class="mb-0">删除虚拟机确认</h3>
+            </div>
+            <div class="card-body text-center py-5">
+                <!-- 虚拟机信息卡片 -->
+                <div class="card mb-4 border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">
+                            <i class="fas fa-server"></i> {{ vm.name }}
+                        </h5>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <p class="mb-1"><strong>IP地址</strong></p>
+                                <p class="text-muted">{{ vm.ip_address }}</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="mb-1"><strong>宿主机</strong></p>
+                                <p class="text-muted">{{ vm.host_machine.name }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <p class="mb-1"><strong>责任人</strong></p>
+                                <p class="text-muted">{{ vm.owner.username|default:"未分配" }}</p>
+                            </div>
+                            <div class="col-6">
+                                <p class="mb-1"><strong>操作系统</strong></p>
+                                <p class="text-muted">{{ vm.get_os_display }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 警告信息 -->
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading">
+                        <i class="fas fa-exclamation-circle"></i> 重要警告！
+                    </h5>
+                    <p class="mb-2">您即将删除以下虚拟机：</p>
+                    <ul class="text-start">
+                        <li>虚拟机名称：<strong>{{ vm.name }}</strong></li>
+                        <li>IP地址：<strong>{{ vm.ip_address }}</strong></li>
+                        <li>所属宿主机：<strong>{{ vm.host_machine.name }}</strong></li>
+                    </ul>
+                    <hr>
+                    <p class="mb-0">
+                        <strong>此操作不可撤销！</strong> 所有相关配置信息将被永久删除。
+                    </p>
+                </div>
+                
+                <!-- 影响分析 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-chart-bar"></i> 影响分析</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-4 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                                    <h6>数据丢失</h6>
+                                    <p class="small text-muted mb-0">配置信息无法恢复</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="fas fa-history fa-2x text-warning mb-2"></i>
+                                    <h6>记录删除</h6>
+                                    <p class="small text-muted mb-0">历史记录将被清除</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <i class="fas fa-ban fa-2x text-secondary mb-2"></i>
+                                    <h6>操作不可逆</h6>
+                                    <p class="small text-muted mb-0">无法撤销此操作</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="fas fa-trash"></i> 确认删除
+                        </button>
+                    </form>
+                    <a href="{% url 'vm_detail' vm.pk %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> 取消返回
+                    </a>
+                </div>
+                
+                <!-- 安全建议 -->
+                <div class="alert alert-light mt-4">
+                    <h6><i class="fas fa-lightbulb"></i> 安全建议：</h6>
+                    <p class="mb-0 small">
+                        在删除前，建议先备份重要信息或确认虚拟机已不再使用。
+                        如有疑问，请联系系统管理员。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        border-radius: 10px;
+    }
+    .btn-lg {
+        padding: 12px 30px;
+        font-size: 1.1rem;
+    }
+    .alert-warning {
+        border-left: 5px solid #ffc107;
+    }
+</style>
+{% endblock %}
