@@ -29,7 +29,7 @@ staticfiles/
 media/
 
 # 日志
-log/
+/log/
 
 # 操作系统文件
 .DS_Store
