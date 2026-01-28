@@ -20,9 +20,6 @@ myenv/
 *.key
 secrets.py
 
-# 静态文件收集（生产环境会自动生成）
-staticfiles/
-
 # 媒体文件
 media/
 
