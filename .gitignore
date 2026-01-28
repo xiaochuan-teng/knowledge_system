@@ -2,8 +2,6 @@ ngo
 *.pyc
 __pycache__/
 db.sqlite3
-*.log
-*.log-*
 
 # Virtual environment
 venv/
@@ -30,6 +28,9 @@ media/
 
 # 日志
 /log/
+*.log
+*.log-*
+log/
 
 # 操作系统文件
 .DS_Store
