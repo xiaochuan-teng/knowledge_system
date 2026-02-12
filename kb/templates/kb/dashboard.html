@@ -324,7 +324,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <!--<span>{{ stat.article_type }}</span>-->
-				<span>{{ stat.display_name }}</span>
+								<span>{{ stat.display_name }}</span>
                                 <span class="text-primary">{{ stat.count }} 篇</span>
                             </div>
                             <div class="progress progress-thin">
@@ -398,17 +398,17 @@
                                 <h6 class="mb-1" style="wdith:90%;">{{ article.title|truncatechars:30 }}</h6>
                                 <small class="text-muted">{{ article.created_at|date:"m-d" }}</small>
                             </div>-->
-				<div class="d-flex w-100">
-    <!-- 标题部分：占90% -->
-    <div class="flex-grow-1" style="flex-basis: 90%; max-width: 90%;">
-        <h6 class="mb-0 text-truncate">{{ article.title }}</h6>
-    </div>
-    
-    <!-- 日期部分：占10% -->
-    <div class="flex-shrink-0 text-end" style="flex-basis: 10%; max-width: 10%;">
-        <small class="text-muted">{{ article.created_at|date:"m-d" }}</small>
-    </div>
-</div>
+							<div class="d-flex w-100">
+								<!-- 标题部分：占90% -->
+								<div class="flex-grow-1" style="flex-basis: 90%; max-width: 90%;">
+									<h6 class="mb-0 text-truncate">{{ article.title }}</h6>
+								</div>
+								
+								<!-- 日期部分：占10% -->
+								<div class="flex-shrink-0 text-end" style="flex-basis: 10%; max-width: 10%;">
+									<small class="text-muted">{{ article.created_at|date:"m-d" }}</small>
+								</div>
+							</div>
                             <p class="mb-1 small text-muted">
                                 {{ article.content|striptags|truncatechars:50 }}
                             </p>

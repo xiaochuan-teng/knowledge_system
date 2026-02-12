@@ -1,0 +1,7 @@
+Requirement already satisfied: scp in /usr/local/python3.13/lib/python3.13/site-packages (0.14.5)
+Requirement already satisfied: paramiko in /usr/local/python3.13/lib/python3.13/site-packages (from scp) (3.4.0)
+Requirement already satisfied: bcrypt>=3.2 in /usr/local/python3.13/lib/python3.13/site-packages (from paramiko->scp) (5.0.0)
+Requirement already satisfied: cryptography>=3.3 in /usr/local/python3.13/lib/python3.13/site-packages (from paramiko->scp) (46.0.3)
+Requirement already satisfied: pynacl>=1.5 in /usr/local/python3.13/lib/python3.13/site-packages (from paramiko->scp) (1.6.2)
+Requirement already satisfied: cffi>=2.0.0 in /usr/local/python3.13/lib/python3.13/site-packages (from cryptography>=3.3->paramiko->scp) (2.0.0)
+Requirement already satisfied: pycparser in /usr/local/python3.13/lib/python3.13/site-packages (from cffi>=2.0.0->cryptography>=3.3->paramiko->scp) (2.23)

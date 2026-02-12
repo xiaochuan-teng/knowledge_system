@@ -72,4 +72,46 @@ urlpatterns = [
     path('asset/<int:pk>/delete/', views.asset_delete, name='asset_delete'),
     path('assets/export/', views.export_assets_csv, name='export_assets'),
     path('assets/quick-check/', views.asset_quick_check, name='asset_quick_check'),
+
+    # 自动发布模块
+    path('deployment/', views.deployment_dashboard, name='deployment_dashboard'),
+    
+    # 项目管理
+    path('deployment/projects/', views.project_list, name='project_list'),
+    path('deployment/project/new/', views.project_create, name='project_create'),
+    path('deployment/project/<int:pk>/', views.project_detail, name='project_detail'),
+    path('deployment/project/<int:pk>/edit/', views.project_edit, name='project_edit'),
+    path('deployment/project/<int:pk>/delete/', views.project_delete, name='project_delete'),
+    path('deployment/project/<int:pk>/script/', views.script_edit, name='script_edit'),
+    
+    # 包管理
+    path('deployment/packages/', views.package_list, name='package_list'),
+    path('deployment/package/upload/', views.package_upload, name='package_upload'),
+    
+    # 任务管理
+    path('deployment/tasks/', views.task_list, name='task_list'),
+    path('deployment/task/<int:pk>/', views.task_detail, name='task_detail'),
+    path('deployment/task/<int:pk>/progress/', views.task_progress, name='task_progress'),
+    
+    # 历史记录
+    path('deployment/history/', views.history_list, name='history_list'),
+    path('deployment/history/<int:pk>/', views.history_detail, name='history_detail'),
+    
+    # API接口
+    path('api/virtual-machines/search/', views.vm_search_api, name='vm_search_api'),
+    path('api/project/<int:pk>/vm-status/', views.project_vm_status_api, name='project_vm_status_api'),
+    path('api/virtual-machines/<int:pk>/info/', views.vm_detail_api, name='vm_detail_api'),
+    path('api/task/<int:pk>/detail/', views.task_detail_api, name='task_detail_api'),
+    path('api/tasks/status/', views.tasks_status_api, name='tasks_status_api'),
+    path('api/tasks/delete/', views.tasks_delete_api, name='tasks_delete_api'),
+    path('api/task/<int:pk>/start/', views.task_start_api, name='task_start_api'),
+    path('api/task/<int:pk>/cancel/', views.task_cancel_api, name='task_cancel_api'),
+    path('api/task/<int:pk>/retry/', views.task_retry_api, name='task_retry_api'),
+    path('api/project/<int:pk>/default-script/', views.project_default_script_api, name='project_default_script_api'),
+    path('api/project/<int:pk>/validate-script/', views.project_validate_script_api, name='project_validate_script_api'),
+    path('api/project/<int:pk>/test-script/', views.project_test_script_api, name='project_test_script_api'),
+    path('api/project/<int:pk>/toggle-script/', views.project_toggle_script_api, name='project_toggle_script_api'),
+    path('api/task/<int:pk>/status/', views.task_status_api, name='task_status_api'),
+    path('api/projects/search/', views.project_search_api, name='project_search_api'),
+    path('api/project/<int:pk>/health-check/', views.project_vm_health_check_api, name='project_vm_health_check_api'),
 ]

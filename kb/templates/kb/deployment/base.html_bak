@@ -1,0 +1,225 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}自动化更新 - {{ title|default:"知识库" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 自定义样式 */
+.deployment-card {
+    margin-bottom: 1.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.progress-sm {
+    height: 20px;
+}
+
+.script-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.vm-item {
+    border-left: 3px solid #007bff;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.health-check .status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.health-check .status.healthy {
+    background-color: #28a745;
+}
+
+.health-check .status.unhealthy {
+    background-color: #dc3545;
+}
+
+.log-output {
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 11px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+}
+</style>
+{% endblock %}
+
+{% block nav_deployment %}
+<li class="nav-item">
+    <a class="nav-link active" href="{% url 'deployment_dashboard' %}">
+        <i class="fas fa-rocket"></i> 自动发布
+    </a>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 面包屑导航 -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'deployment_dashboard' %}">自动发布</a></li>
+            {% block breadcrumb %}{% endblock %}
+        </ol>
+    </nav>
+    
+    <!-- 消息提示 -->
+    {% if messages %}
+    <div class="messages mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- 侧边栏导航 -->
+        <div class="col-md-3">
+            <div class="card deployment-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-sitemap"></i> 更新管理
+                    </h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'deployment_dashboard' %}" 
+                       class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'deployment_dashboard' %}active{% endif %}">
+                         仪表板
+                    </a>
+                    <a href="{% url 'project_list' %}" 
+                       class="list-group-item list-group-item-action {% if 'project' in request.resolver_match.url_name and 'script' not in request.resolver_match.url_name %}active{% endif %}">
+                         项目管理
+                    </a>
+                    <a href="{% url 'package_upload' %}" 
+                       class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'package_upload' %}active{% endif %}">
+                         上传更新包
+                    </a>
+                    <a href="{% url 'task_list' %}" 
+                       class="list-group-item list-group-item-action {% if 'task' in request.resolver_match.url_name %}active{% endif %}">
+                         更新任务
+                    </a>
+                    <a href="{% url 'history_list' %}" 
+                       class="list-group-item list-group-item-action {% if 'history' in request.resolver_match.url_name %}active{% endif %}">
+                         更新历史
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 快速操作 -->
+            <div class="card deployment-card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-bolt"></i> 快速操作
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'project_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> 创建项目
+                        </a>
+                        <a href="{% url 'package_upload' %}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-upload"></i> 上传并更新
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 -->
+        <div class="col-md-9">
+            {% block deployment_content %}
+            {% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局JavaScript函数
+function showLoading(button) {
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+    button.disabled = true;
+    return originalHtml;
+}
+
+function restoreButton(button, originalHtml) {
+    button.innerHTML = originalHtml;
+    button.disabled = false;
+}
+
+function showAlert(message, type = 'success', duration = 3000) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // 插入到页面顶部
+    const container = document.querySelector('.container-fluid.py-4');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // 自动消失
+    if (duration > 0) {
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show');
+                setTimeout(() => alertDiv.remove(), 150);
+            }
+        }, duration);
+    }
+}
+
+// 确认对话框
+function confirmAction(message, callback) {
+    if (confirm(message)) {
+        callback();
+    }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+</script>
+{% endblock %}

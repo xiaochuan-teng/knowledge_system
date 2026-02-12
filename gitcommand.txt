@@ -1,5 +1,5 @@
 # 日常开发推送三连
-git add .
+git add .   （如果包含删除文件操作，使用git add -A .）
 git commit -m "描述你的修改"
 git push
 
@@ -20,3 +20,7 @@ git checkout main
 
 # 查看提交历史
 git log --oneline
+
+# 切换到某个分支
+git checkout *****(git log --oneline返回的哈希值)
+

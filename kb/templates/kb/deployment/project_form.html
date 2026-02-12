@@ -1,0 +1,1178 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'project_list' %}">项目管理</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">
+            <i class="fas fa-project-diagram"></i> {{ title }}
+        </h4>
+    </div>
+    
+    <div class="card-body">
+        <form method="post" id="project-form">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- 基本项目信息 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> 基本项目信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                {{ form.name.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">请输入项目名称</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">
+                                {{ form.code.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                            <div class="text-danger small mt-1">{{ form.code.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">项目代号用于标识，如: PROJ-001</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                {{ form.status.label }}
+                            </label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                            <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                            {{ form.description.label }}
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="text-danger small mt-1">{{ form.description.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">项目描述，可选的</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 关联虚拟机 -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-server"></i> 关联虚拟机
+                        </h5>
+                        <p class="text-muted mb-0 mt-1">使用搜索框添加虚拟机，支持按名称或IP搜索</p>
+                    </div>
+                    <button type="button" id="add-vm-form" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus"></i> 添加虚拟机
+                    </button>
+                </div>
+                <div class="card-body">
+                    {{ vm_formset.management_form }}
+                    
+                    <div id="vm-forms">
+                        <!-- 如果没有表单，显示一个空表单 -->
+                        {% if vm_formset|length == 0 %}
+                        <!-- 显示一个空表单模板 -->
+                        <div class="card mb-3 vm-form" data-index="0" style="display: block;">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="card-title mb-0">
+                                    虚拟机 #1
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-danger remove-vm-form" style="display: none;">
+                                    <i class="fas fa-times"></i> 移除
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <!-- 虚拟机搜索和选择 -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">选择虚拟机</label>
+                                        <div class="input-group">
+                                            <input type="text" 
+                                                   class="form-control vm-search-input"
+                                                   placeholder="输入虚拟机名称或IP搜索..."
+                                                   data-index="0">
+                                            <button class="btn btn-outline-secondary vm-search-btn" type="button"
+                                                    data-index="0">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <div class="vm-search-results mt-2" data-index="0" style="display: none;">
+                                            <div class="list-group" style="max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                        <input type="hidden" class="vm-id-input" name="vms-0-virtual_machine" id="id_vms-0-virtual_machine">
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label class="form-label">虚拟机信息</label>
+                                        <div class="vm-info" data-index="0">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i> 请先选择虚拟机
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- SSH配置 -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">覆盖IP地址</label>
+                                        <input type="text" class="form-control ip-input" 
+                                               name="vms-0-custom_ip" id="id_vms-0-custom_ip" placeholder="可选">
+                                        <div class="form-text">
+                                            如果为空，则使用虚拟机IP
+                                            <span class="vm-ip-hint text-info" data-index="0"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">SSH用户名</label>
+                                        <input type="text" class="form-control" 
+                                               name="vms-0-ssh_username" id="id_vms-0-ssh_username" value="root">
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">SSH端口</label>
+                                        <input type="number" class="form-control" 
+                                               name="vms-0-ssh_port" id="id_vms-0-ssh_port" value="22">
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">SSH密码</label>
+                                        <input type="password" class="form-control" 
+                                               name="vms-0-ssh_password" id="id_vms-0-ssh_password" value="LINKcare1503">
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">SSH密钥路径</label>
+                                        <input type="text" class="form-control" 
+                                               name="vms-0-ssh_key_path" id="id_vms-0-ssh_key_path">
+                                        <div class="form-text">如果使用密钥认证，请填写密钥路径</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- 如果有表单，正常显示 -->
+                        {% for form in vm_formset %}
+                        <div class="card mb-3 vm-form" data-index="{{ forloop.counter0 }}" style="display: block;">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="card-title mb-0">
+                                    虚拟机 #{{ forloop.counter }}
+                                    {% if form.virtual_machine.value %}
+                                    <span class="badge bg-success ms-2">已选择</span>
+                                    {% endif %}
+                                </h6>
+                                {% if not forloop.first or form.virtual_machine.value %}
+                                <button type="button" class="btn btn-sm btn-danger remove-vm-form">
+                                    <i class="fas fa-times"></i> 移除
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <!-- 虚拟机搜索和选择 -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">选择虚拟机</label>
+                                        <div class="input-group">
+                                            <input type="text" 
+                                                   class="form-control vm-search-input"
+                                                   placeholder="输入虚拟机名称或IP搜索..."
+                                                   data-index="{{ forloop.counter0 }}"
+                                                   value="{% if form.virtual_machine.value %}{{ form.virtual_machine.instance.virtual_machine.name }}{% endif %}">
+                                            <button class="btn btn-outline-secondary vm-search-btn" type="button"
+                                                    data-index="{{ forloop.counter0 }}">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <div class="vm-search-results mt-2" 
+                                             data-index="{{ forloop.counter0 }}"
+                                             style="display: none;">
+                                            <div class="list-group" style="max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                        <input type="hidden" class="vm-id-input" 
+                                               name="vms-{{ forloop.counter0 }}-virtual_machine" 
+                                               id="id_vms-{{ forloop.counter0 }}-virtual_machine"
+                                               value="{{ form.virtual_machine.value|default:'' }}">
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label class="form-label">虚拟机信息</label>
+                                        <div class="vm-info" data-index="{{ forloop.counter0 }}">
+                                            {% if form.virtual_machine.value %}
+                                            <div class="alert alert-success">
+                                                <div class="row small">
+                                                    <div class="col-4"><strong>名称:</strong></div>
+                                                    <div class="col-8">{{ form.virtual_machine.instance.virtual_machine.name }}</div>
+                                                    <div class="col-4"><strong>IP地址:</strong></div>
+                                                    <div class="col-8">{{ form.virtual_machine.instance.virtual_machine.ip_address }}</div>
+                                                    <div class="col-4"><strong>宿主机:</strong></div>
+                                                    <div class="col-8">{{ form.virtual_machine.instance.virtual_machine.host_machine.name }}</div>
+                                                    <div class="col-4"><strong>状态:</strong></div>
+                                                    <div class="col-8">
+                                                        <span class="badge bg-{% if form.virtual_machine.instance.virtual_machine.status == 'running' %}success{% else %}warning{% endif %}">
+                                                            {{ form.virtual_machine.instance.virtual_machine.get_status_display }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i> 请先选择虚拟机
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- SSH配置 -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">覆盖IP地址</label>
+                                        <input type="text" class="form-control ip-input" 
+                                               name="vms-{{ forloop.counter0 }}-custom_ip" 
+                                               id="id_vms-{{ forloop.counter0 }}-custom_ip" 
+                                               value="{{ form.custom_ip.value|default:'' }}"
+                                               placeholder="可选">
+                                        <div class="form-text">
+                                            如果为空，则使用虚拟机IP
+                                            <span class="vm-ip-hint text-info" data-index="{{ forloop.counter0 }}">
+                                                {% if form.virtual_machine.value %}
+                                                (当前虚拟机IP: {{ form.virtual_machine.instance.virtual_machine.ip_address }})
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">SSH用户名</label>
+                                        <input type="text" class="form-control" 
+                                               name="vms-{{ forloop.counter0 }}-ssh_username" 
+                                               id="id_vms-{{ forloop.counter0 }}-ssh_username" 
+                                               value="{{ form.ssh_username.value|default:'root' }}">
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">SSH端口</label>
+                                        <input type="number" class="form-control" 
+                                               name="vms-{{ forloop.counter0 }}-ssh_port" 
+                                               id="id_vms-{{ forloop.counter0 }}-ssh_port" 
+                                               value="{{ form.ssh_port.value|default:'22' }}">
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">SSH密码</label>
+                                        <input type="password" class="form-control" 
+                                               name="vms-{{ forloop.counter0 }}-ssh_password" 
+                                               id="id_vms-{{ forloop.counter0 }}-ssh_password" 
+                                               value="{{ form.ssh_password.value|default:'LINKcare1503' }}">
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">SSH密钥路径</label>
+                                        <input type="text" class="form-control" 
+                                               name="vms-{{ forloop.counter0 }}-ssh_key_path" 
+                                               id="id_vms-{{ forloop.counter0 }}-ssh_key_path" 
+                                               value="{{ form.ssh_key_path.value|default:'' }}">
+                                        <div class="form-text">如果使用密钥认证，请填写密钥路径</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 隐藏字段 -->
+                                {% if form.virtual_machine.value %}
+                                <input type="hidden" name="vms-{{ forloop.counter0 }}-id" 
+                                       id="id_vms-{{ forloop.counter0 }}-id" 
+                                       value="{{ form.id.value }}">
+                                {% endif %}
+                                
+                                {% if form.errors %}
+                                <div class="alert alert-danger mt-3">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <p>{{ field }}: {{ error }}</p>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <!-- 空表单模板（用于添加新表单） -->
+                    <div id="empty-vm-form" style="display: none;">
+                        <div class="card mb-3 vm-form">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="card-title mb-0">虚拟机 #<span class="form-counter">1</span></h6>
+                                <button type="button" class="btn btn-sm btn-danger remove-vm-form">
+                                    <i class="fas fa-times"></i> 移除
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">选择虚拟机</label>
+                                        <div class="input-group">
+                                            <input type="text" 
+                                                   class="form-control vm-search-input"
+                                                   placeholder="输入虚拟机名称或IP搜索...">
+                                            <button class="btn btn-outline-secondary vm-search-btn" type="button">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <div class="vm-search-results mt-2" style="display: none;">
+                                            <div class="list-group" style="max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                        <input type="hidden" class="vm-id-input" name="vms-__prefix__-virtual_machine">
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label class="form-label">虚拟机信息</label>
+                                        <div class="vm-info">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i> 请先选择虚拟机
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">覆盖IP地址</label>
+                                        <input type="text" class="form-control ip-input" 
+                                               name="vms-__prefix__-custom_ip" placeholder="可选">
+                                        <div class="form-text">
+                                            如果为空，则使用虚拟机IP
+                                            <span class="vm-ip-hint text-info"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">SSH用户名</label>
+                                        <input type="text" class="form-control" 
+                                               name="vms-__prefix__-ssh_username" value="root">
+                                    </div>
+                                    
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">SSH端口</label>
+                                        <input type="number" class="form-control" 
+                                               name="vms-__prefix__-ssh_port" value="22">
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">SSH密码</label>
+                                        <input type="password" class="form-control" 
+                                               name="vms-__prefix__-ssh_password">
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">SSH密钥路径</label>
+                                        <input type="text" class="form-control" 
+                                               name="vms-__prefix__-ssh_key_path">
+                                        <div class="form-text">如果使用密钥认证，请填写密钥路径</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 虚拟机统计 -->
+                    <div class="mt-3">
+                        <div class="alert alert-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-info-circle"></i>
+                                    已选择 <span id="selected-vm-count">0</span> 个虚拟机
+                                </div>
+                                <div id="selected-vm-names" class="text-muted small">
+                                    <!-- 已选择的虚拟机名称将在这里显示 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 快速添加区域 -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-bolt"></i> 快速添加虚拟机
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <input type="text" id="quick-search-input" class="form-control" 
+                                           placeholder="快速搜索虚拟机（支持名称、IP、宿主机）...">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-primary w-100" id="quick-search-btn">
+                                        <i class="fas fa-search"></i> 搜索并添加
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="quick-search-results" class="mt-3" style="display: none;">
+                                <h6>搜索结果：</h6>
+                                <div id="quick-search-list" class="list-group"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 更新配置 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog"></i> 更新配置
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.cpp_install_path.id_for_label }}" class="form-label">
+                                {{ form.cpp_install_path.label }}
+                            </label>
+                            {{ form.cpp_install_path }}
+                            {% if form.cpp_install_path.errors %}
+                            <div class="text-danger small mt-1">{{ form.cpp_install_path.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">C++程序安装路径，如: /usr/local/PCMS/PCMS</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.java_install_path.id_for_label }}" class="form-label">
+                                {{ form.java_install_path.label }}
+                            </label>
+                            {{ form.java_install_path }}
+                            {% if form.java_install_path.errors %}
+                            <div class="text-danger small mt-1">{{ form.java_install_path.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Java程序安装路径，如: /usr/local/PCMS/tomcat</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.backup_path.id_for_label }}" class="form-label">
+                                {{ form.backup_path.label }}
+                            </label>
+                            {{ form.backup_path }}
+                            {% if form.backup_path.errors %}
+                            <div class="text-danger small mt-1">{{ form.backup_path.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">更新备份文件路径，如: /opt/upbak</div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.java_port.id_for_label }}" class="form-label">
+                                {{ form.java_port.label }}
+                            </label>
+                            {{ form.java_port }}
+                            {% if form.java_port.errors %}
+                            <div class="text-danger small mt-1">{{ form.java_port.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.cpp_port.id_for_label }}" class="form-label">
+                                {{ form.cpp_port.label }}
+                            </label>
+                            {{ form.cpp_port }}
+                            {% if form.cpp_port.errors %}
+                            <div class="text-danger small mt-1">{{ form.cpp_port.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.ssh_timeout.id_for_label }}" class="form-label">
+                                {{ form.ssh_timeout.label }}
+                            </label>
+                            {{ form.ssh_timeout }}
+                            {% if form.ssh_timeout.errors %}
+                            <div class="text-danger small mt-1">{{ form.ssh_timeout.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">SSH连接超时时间(秒)</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.health_check_timeout.id_for_label }}" class="form-label">
+                                {{ form.health_check_timeout.label }}
+                            </label>
+                            {{ form.health_check_timeout }}
+                            {% if form.health_check_timeout.errors %}
+                            <div class="text-danger small mt-1">{{ form.health_check_timeout.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">健康检查超时时间(秒)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ submit_text }}
+                </button>
+                <a href="{% if editing %}{% url 'project_detail' pk=project.pk %}{% else %}{% url 'project_list' %}{% endif %}" 
+                   class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const vmFormsContainer = document.getElementById('vm-forms');
+    const addVmButton = document.getElementById('add-vm-form');
+    const totalForms = document.getElementById('id_vms-TOTAL_FORMS');
+    
+    // 初始化表单计数
+    let formCount = document.querySelectorAll('.vm-form[style*="block"]').length;
+    if (totalForms) {
+        totalForms.value = formCount;
+    }
+    
+    // 更新虚拟机统计
+    function updateVmStats() {
+        const vmSelects = document.querySelectorAll('.vm-id-input');
+        let selectedCount = 0;
+        let selectedNames = [];
+        
+        vmSelects.forEach(input => {
+            if (input.value) {
+                selectedCount++;
+                const form = input.closest('.vm-form');
+                const searchInput = form.querySelector('.vm-search-input');
+                if (searchInput && searchInput.value) {
+                    selectedNames.push(searchInput.value);
+                }
+            }
+        });
+        
+        const countElement = document.getElementById('selected-vm-count');
+        if (countElement) {
+            countElement.textContent = selectedCount;
+        }
+        
+        const namesContainer = document.getElementById('selected-vm-names');
+        if (namesContainer) {
+            if (selectedNames.length > 0) {
+                namesContainer.innerHTML = selectedNames.map(name => 
+                    `<span class="badge bg-info me-1">${name}</span>`
+                ).join('');
+            } else {
+                namesContainer.innerHTML = '<span class="text-muted">尚未选择虚拟机</span>';
+            }
+        }
+    }
+    
+    // 绑定虚拟机搜索功能
+    function bindVmSearch(form) {
+        const searchInput = form.querySelector('.vm-search-input');
+        const searchBtn = form.querySelector('.vm-search-btn');
+        const resultsContainer = form.querySelector('.vm-search-results');
+        const vmIdInput = form.querySelector('.vm-id-input');
+        const vmInfoContainer = form.querySelector('.vm-info');
+        const ipHint = form.querySelector('.vm-ip-hint');
+        const ipInput = form.querySelector('.ip-input');
+        
+        function performSearch(query) {
+            if (!query || query.trim().length < 1) {
+                if (resultsContainer) {
+                    resultsContainer.style.display = 'none';
+                }
+                return;
+            }
+            
+            fetch(`/api/virtual-machines/search/?q=${encodeURIComponent(query)}&limit=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!resultsContainer) return;
+                    
+                    const resultsList = resultsContainer.querySelector('.list-group');
+                    resultsList.innerHTML = '';
+                    
+                    if (data.results && data.results.length > 0) {
+                        resultsContainer.style.display = 'block';
+                        
+                        data.results.forEach(vm => {
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'list-group-item list-group-item-action';
+                            item.innerHTML = `
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">${vm.name}</h6>
+                                    <small class="text-${vm.status === 'running' ? 'success' : 'warning'}">
+                                        ${vm.status_display}
+                                    </small>
+                                </div>
+                                <p class="mb-1">IP: ${vm.ip_address || '未设置'}</p>
+                                <p class="mb-1">宿主机: ${vm.host_machine || '未设置'}</p>
+                            `;
+                            
+                            item.addEventListener('click', function() {
+                                // 设置虚拟机ID
+                                if (vmIdInput) {
+                                    vmIdInput.value = vm.id;
+                                }
+                                
+                                // 更新搜索框显示
+                                if (searchInput) {
+                                    searchInput.value = vm.name;
+                                }
+                                
+                                // 显示虚拟机信息
+                                if (vmInfoContainer) {
+                                    vmInfoContainer.innerHTML = `
+                                        <div class="alert alert-success">
+                                            <div class="row small">
+                                                <div class="col-4"><strong>名称:</strong></div>
+                                                <div class="col-8">${vm.name}</div>
+                                                <div class="col-4"><strong>IP地址:</strong></div>
+                                                <div class="col-8">${vm.ip_address || '未设置'}</div>
+                                                <div class="col-4"><strong>宿主机:</strong></div>
+                                                <div class="col-8">${vm.host_machine || '未设置'}</div>
+                                                <div class="col-4"><strong>状态:</strong></div>
+                                                <div class="col-8">
+                                                    <span class="badge bg-${vm.status === 'running' ? 'success' : 'warning'}">
+                                                        ${vm.status_display}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                
+                                // 更新IP提示
+                                if (ipHint) {
+                                    ipHint.textContent = `(虚拟机IP: ${vm.ip_address || '未设置'})`;
+                                }
+                                
+                                // 自动填充IP地址
+                                if (ipInput && !ipInput.value && vm.ip_address) {
+                                    ipInput.value = vm.ip_address;
+                                }
+                                
+                                // 隐藏搜索结果
+                                resultsContainer.style.display = 'none';
+                                
+                                // 更新统计
+                                updateVmStats();
+                            });
+                            
+                            resultsList.appendChild(item);
+                        });
+                    } else {
+                        resultsContainer.style.display = 'block';
+                        resultsList.innerHTML = `
+                            <div class="list-group-item text-muted text-center py-3">
+                                <i class="fas fa-search fa-lg mb-2"></i>
+                                <p>未找到匹配的虚拟机</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('搜索失败:', error);
+                    if (resultsContainer) {
+                        resultsContainer.style.display = 'block';
+                        const resultsList = resultsContainer.querySelector('.list-group');
+                        resultsList.innerHTML = `
+                            <div class="list-group-item text-danger">
+                                <i class="fas fa-exclamation-triangle"></i> 搜索失败，请重试
+                            </div>
+                        `;
+                    }
+                });
+        }
+        
+        // 绑定搜索事件
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    performSearch(this.value.trim());
+                }, 300);
+            });
+        }
+        
+        if (searchBtn) {
+            searchBtn.addEventListener('click', function() {
+                if (searchInput) {
+                    performSearch(searchInput.value.trim());
+                }
+            });
+        }
+        
+        // 点击其他地方隐藏搜索结果
+        document.addEventListener('click', function(e) {
+            if (resultsContainer && !resultsContainer.contains(e.target) && 
+                searchInput && !searchInput.contains(e.target) && 
+                searchBtn && !searchBtn.contains(e.target)) {
+                resultsContainer.style.display = 'none';
+            }
+        });
+        
+        // 如果编辑时已经有值，显示虚拟机信息
+        if (vmIdInput && vmIdInput.value && searchInput && searchInput.value) {
+            // 获取虚拟机详细信息
+            fetch(`/api/virtual-machines/${vmIdInput.value}/info/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (vmInfoContainer) {
+                            vmInfoContainer.innerHTML = `
+                                <div class="alert alert-success">
+                                    <div class="row small">
+                                        <div class="col-4"><strong>名称:</strong></div>
+                                        <div class="col-8">${searchInput.value}</div>
+                                        <div class="col-4"><strong>IP地址:</strong></div>
+                                        <div class="col-8">${data.ip_address || '未设置'}</div>
+                                        <div class="col-4"><strong>宿主机:</strong></div>
+                                        <div class="col-8">${data.host_name || '未设置'}</div>
+                                        <div class="col-4"><strong>状态:</strong></div>
+                                        <div class="col-8">
+                                            <span class="badge bg-${data.status === 'running' ? 'success' : 'warning'}">
+                                                ${data.status_display}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        if (ipHint) {
+                            ipHint.textContent = `(虚拟机IP: ${data.ip_address || '未设置'})`;
+                        }
+                    }
+                });
+        }
+    }
+    
+    // 添加虚拟机表单
+    function addVmForm() {
+        const emptyFormTemplate = document.getElementById('empty-vm-form').innerHTML;
+        const newIndex = formCount;
+        
+        // 替换前缀
+        let newFormHtml = emptyFormTemplate.replace(/__prefix__/g, newIndex);
+        
+        // 创建新的 DOM 元素
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newFormHtml;
+        const newForm = tempDiv.querySelector('.vm-form');
+        
+        // 更新计数器显示
+        const visibleForms = document.querySelectorAll('.vm-form[style*="block"]').length;
+        const counter = newForm.querySelector('.form-counter');
+        if (counter) {
+            counter.textContent = visibleForms + 1;
+        }
+        
+        // 更新表单标题
+        const title = newForm.querySelector('.card-title');
+        if (title) {
+            title.innerHTML = title.innerHTML.replace(/#\d+/, `#${visibleForms + 1}`);
+        }
+        
+        // 显示表单
+        newForm.style.display = 'block';
+        
+        // 添加到容器
+        vmFormsContainer.appendChild(newForm);
+        formCount++;
+        if (totalForms) {
+            totalForms.value = formCount;
+        }
+        
+        // 绑定事件
+        bindVmEvents(newForm);
+        updateVmStats();
+        
+        return newForm;
+    }
+    
+    // 移除虚拟机表单
+    function removeVmForm(form) {
+        if (document.querySelectorAll('.vm-form[style*="block"]').length > 1) {
+            form.remove();
+            formCount--;
+            if (totalForms) {
+                totalForms.value = formCount;
+            }
+            
+            // 重新编号显示的虚拟机
+            const visibleForms = document.querySelectorAll('.vm-form[style*="block"]');
+            visibleForms.forEach((form, index) => {
+                const counter = form.querySelector('.form-counter');
+                if (counter) {
+                    counter.textContent = (index + 1);
+                }
+                const title = form.querySelector('.card-title');
+                if (title) {
+                    title.innerHTML = title.innerHTML.replace(/#\d+/, `#${index + 1}`);
+                }
+            });
+            
+            // 更新统计
+            updateVmStats();
+        } else {
+            showAlert('至少需要一个虚拟机！', 'warning');
+        }
+    }
+    
+    // 绑定表单事件
+    function bindVmEvents(form) {
+        const removeBtn = form.querySelector('.remove-vm-form');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                removeVmForm(form);
+            });
+        }
+        
+        // 绑定搜索功能
+        bindVmSearch(form);
+    }
+    
+    // 添加虚拟机按钮
+    addVmButton.addEventListener('click', function() {
+        addVmForm();
+    });
+    
+    // 绑定已有表单的事件
+    document.querySelectorAll('.vm-form').forEach(form => {
+        if (form.style.display !== 'none') {
+            bindVmEvents(form);
+        }
+    });
+    
+    // 快速搜索功能
+    const quickSearchInput = document.getElementById('quick-search-input');
+    const quickSearchBtn = document.getElementById('quick-search-btn');
+    const quickSearchResults = document.getElementById('quick-search-results');
+    
+    if (quickSearchBtn) {
+        quickSearchBtn.addEventListener('click', performQuickSearch);
+    }
+    
+    if (quickSearchInput) {
+        quickSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performQuickSearch();
+            }
+        });
+    }
+    
+    function performQuickSearch() {
+        const query = quickSearchInput.value.trim();
+        if (!query) return;
+        
+        fetch(`/api/virtual-machines/search/?q=${encodeURIComponent(query)}&limit=20`)
+            .then(response => response.json())
+            .then(data => {
+                if (!quickSearchResults) return;
+                
+                const searchList = document.getElementById('quick-search-list');
+                if (!searchList) return;
+                
+                searchList.innerHTML = '';
+                
+                if (data.results && data.results.length > 0) {
+                    quickSearchResults.style.display = 'block';
+                    
+                    data.results.forEach(vm => {
+                        // 检查是否已添加此虚拟机
+                        const existingIds = Array.from(document.querySelectorAll('.vm-id-input'))
+                            .map(input => input.value)
+                            .filter(id => id);
+                        
+                        const isAdded = existingIds.includes(vm.id.toString());
+                        
+                        const item = document.createElement('div');
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">${vm.name}</h6>
+                                    <p class="mb-1 small">IP: ${vm.ip_address || '未设置'}</p>
+                                    <p class="mb-1 small">宿主机: ${vm.host_machine || '未设置'}</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-${vm.status === 'running' ? 'success' : 'warning'} mb-2">
+                                        ${vm.status_display}
+                                    </span>
+                                    ${isAdded ? '<span class="badge bg-info">已添加</span>' : ''}
+                                </div>
+                            </div>
+                            ${!isAdded ? `
+                            <button type="button" class="btn btn-sm btn-primary mt-2 add-quick-vm" 
+                                    data-vm-id="${vm.id}" data-vm-name="${vm.name}" data-vm-ip="${vm.ip_address || ''}">
+                                <i class="fas fa-plus"></i> 快速添加
+                            </button>
+                            ` : ''}
+                        `;
+                        searchList.appendChild(item);
+                    });
+                    
+                    // 绑定快速添加事件
+                    document.querySelectorAll('.add-quick-vm').forEach(button => {
+                        button.addEventListener('click', function() {
+                            addQuickVm(
+                                this.getAttribute('data-vm-id'),
+                                this.getAttribute('data-vm-name'),
+                                this.getAttribute('data-vm-ip')
+                            );
+                        });
+                    });
+                } else {
+                    quickSearchResults.style.display = 'block';
+                    searchList.innerHTML = `
+                        <div class="list-group-item">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-search fa-lg mb-2"></i>
+                                <p>未找到匹配的虚拟机</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+    }
+    
+    function addQuickVm(vmId, vmName, vmIp) {
+        // 查找第一个没有虚拟机的表单，或者添加新表单
+        let targetForm = null;
+        const visibleForms = document.querySelectorAll('.vm-form[style*="block"]');
+        
+        for (const form of visibleForms) {
+            const vmIdInput = form.querySelector('.vm-id-input');
+            if (!vmIdInput.value) {
+                targetForm = form;
+                break;
+            }
+        }
+        
+        if (!targetForm) {
+            targetForm = addVmForm();
+        }
+        
+        // 设置虚拟机信息
+        const searchInput = targetForm.querySelector('.vm-search-input');
+        const vmIdInput = targetForm.querySelector('.vm-id-input');
+        const vmInfoContainer = targetForm.querySelector('.vm-info');
+        const ipHint = targetForm.querySelector('.vm-ip-hint');
+        const ipInput = targetForm.querySelector('.ip-input');
+        
+        if (searchInput) searchInput.value = vmName;
+        if (vmIdInput) vmIdInput.value = vmId;
+        
+        // 显示虚拟机信息
+        vmInfoContainer.innerHTML = `
+            <div class="alert alert-success">
+                <div class="row small">
+                    <div class="col-4"><strong>名称:</strong></div>
+                    <div class="col-8">${vmName}</div>
+                    <div class="col-4"><strong>IP地址:</strong></div>
+                    <div class="col-8">${vmIp || '未设置'}</div>
+                    <div class="col-4"><strong>状态:</strong></div>
+                    <div class="col-8">
+                        <span class="badge bg-success">已选择</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        if (ipHint) {
+            ipHint.textContent = `(虚拟机IP: ${vmIp || '未设置'})`;
+        }
+        
+        if (ipInput && !ipInput.value && vmIp) {
+            ipInput.value = vmIp;
+        }
+        
+        // 隐藏快速搜索结果
+        if (quickSearchResults) {
+            quickSearchResults.style.display = 'none';
+        }
+        if (quickSearchInput) {
+            quickSearchInput.value = '';
+        }
+        
+        // 更新统计
+        updateVmStats();
+        
+        showAlert(`已添加虚拟机 "${vmName}"`, 'success');
+    }
+    
+    // 初始化统计
+    updateVmStats();
+    
+    // 表单验证
+    const projectForm = document.getElementById('project-form');
+    if (projectForm) {
+        projectForm.addEventListener('submit', function(e) {
+            let isValid = true;
+            let errorMessages = [];
+            
+            // 检查项目名称
+            const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+            if (!nameInput || !nameInput.value.trim()) {
+                isValid = false;
+                errorMessages.push('请输入项目名称');
+            }
+            
+            // 检查项目代号
+            const codeInput = document.getElementById('{{ form.code.id_for_label }}');
+            if (!codeInput || !codeInput.value.trim()) {
+                isValid = false;
+                errorMessages.push('请输入项目代号');
+            }
+            
+            // 检查虚拟机选择
+            const vmSelects = document.querySelectorAll('.vm-id-input');
+            let selectedVms = 0;
+            vmSelects.forEach(input => {
+                if (input.value) {
+                    selectedVms++;
+                }
+            });
+            
+            if (selectedVms === 0) {
+                isValid = false;
+                errorMessages.push('请至少选择一个虚拟机');
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+                showAlert('请解决以下问题：<br>' + errorMessages.join('<br>'), 'danger');
+            }
+        });
+    }
+    
+    // 工具函数
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.deployment-card .card-body');
+        if (container) {
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    }
+});
+</script>
+
+<style>
+.vm-search-results {
+    position: absolute;
+    z-index: 1000;
+    width: calc(100% - 30px);
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 0.375rem 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+    margin-top: -1px;
+}
+
+.vm-search-results .list-group {
+    border: none;
+}
+
+.vm-search-results .list-group-item {
+    border-left: none;
+    border-right: none;
+    cursor: pointer;
+}
+
+.vm-search-results .list-group-item:first-child {
+    border-top: none;
+}
+
+.vm-search-results .list-group-item:last-child {
+    border-bottom: none;
+}
+
+.vm-form {
+    border-left: 3px solid #0d6efd;
+}
+
+.vm-form .card-header {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+#quick-search-results {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#quick-search-list .list-group-item:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.add-quick-vm {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.vm-info .alert {
+    margin-bottom: 0;
+    padding: 0.5rem;
+}
+</style>
+{% endblock %}

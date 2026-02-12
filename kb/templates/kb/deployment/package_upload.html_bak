@@ -1,0 +1,747 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'project_list' %}">项目管理</a></li>
+<li class="breadcrumb-item active" aria-current="page">上传更新包</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">
+            <i class="fas fa-upload"></i> {{ title }}
+        </h4>
+    </div>
+    
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" id="upload-form">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- 上传进度 -->
+            <div class="progress mb-4" id="upload-progress" style="display: none;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%"></div>
+            </div>
+            
+            <!-- 基本信息 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> 基本信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- 项目选择（带搜索的下拉框） -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.project.id_for_label }}" class="form-label">
+                                {{ form.project.label }} <span class="text-danger">*</span>
+                            </label>
+                            <select name="{{ form.project.name }}" id="{{ form.project.id_for_label }}" 
+                                    class="form-select select2-project" required>
+                                <option value="">请选择项目</option>
+                                {% for project in form.project.field.queryset %}
+                                    <option value="{{ project.id }}" 
+                                            {% if form.project.value|stringformat:"s" == project.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ project.name }} ({{ project.code }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.project.errors %}
+                            <div class="text-danger small mt-1">{{ form.project.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">选择项目后，包将自动更新到该项目下的所有在线服务器</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.package_type.id_for_label }}" class="form-label">
+                                {{ form.package_type.label }} <span class="text-danger">*</span>
+                            </label>
+                            <select name="{{ form.package_type.name }}" id="{{ form.package_type.id_for_label }}" 
+                                    class="form-select" required>
+                                <option value="">请选择包类型</option>
+                                <option value="java_full" {% if form.package_type.value == 'java_full' %}selected{% endif %}>Java全量包(pcms.war)</option>
+                                <option value="java_incremental" {% if form.package_type.value == 'java_incremental' %}selected{% endif %}>Java增量包(pcms.zip)</option>
+                                <option value="cpp_program" {% if form.package_type.value == 'cpp_program' %}selected{% endif %}>C++程序(pcms)</option>
+                                <!-- 已移除SQL脚本选项 -->
+                                <option value="h5_package" {% if form.package_type.value == 'h5_package' %}selected{% endif %}>H5包(confApp.zip)</option>
+                                <option value="java_log_full" {% if form.package_type.value == 'java_log_full' %}selected{% endif %}>Java日志全量包(pcmsLog.war)</option>
+                                <option value="java_log_incremental" {% if form.package_type.value == 'java_log_incremental' %}selected{% endif %}>Java日志增量包(pcmsLog.zip)</option>
+                            </select>
+                            {% if form.package_type.errors %}
+                            <div class="text-danger small mt-1">{{ form.package_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.version.id_for_label }}" class="form-label">
+                                {{ form.version.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.version }}
+                            {% if form.version.errors %}
+                            <div class="text-danger small mt-1">{{ form.version.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">版本号格式如: V3.0.1, 2024.01.15</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">
+                                {{ form.file.label }} <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                {{ form.file }}
+                                <!--<button type="button" class="btn btn-outline-secondary" id="browse-btn">
+                                    <i class="fas fa-folder-open"></i> 浏览
+                                </button>-->
+                            </div>
+                            {% if form.file.errors %}
+                            <div class="text-danger small mt-1">{{ form.file.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">支持的文件: .war, .zip, 可执行文件等</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                            {{ form.description.label }}
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="text-danger small mt-1">{{ form.description.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">包的描述信息，如更新内容说明</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 服务器预览 -->
+            <div class="card mb-4" id="server-preview" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-server"></i> 目标虚拟机
+                        <span class="badge bg-info ms-2" id="server-count">0</span>
+                    </h5>
+                    <p class="text-muted mb-0 mt-1">包将自动更新到以下虚拟机</p>
+                </div>
+                <div class="card-body">
+                    <div id="server-list" class="row"></div>
+                    <div class="alert alert-warning mt-3" id="no-servers-alert" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        该项目下没有在线虚拟机，无法执行更新
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 文件信息 -->
+            <div class="card mb-4" id="file-info" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-alt"></i> 文件信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">文件名</label>
+                                <input type="text" class="form-control" id="file-name" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">文件大小</label>
+                                <input type="text" class="form-control" id="file-size" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">文件类型</label>
+                                <input type="text" class="form-control" id="file-type" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 更新选项 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog"></i> 更新选项
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="auto-deploy" checked>
+                                <label class="form-check-label" for="auto-deploy">
+                                    <strong>自动更新</strong>
+                                </label>
+                                <div class="form-text">上传完成后自动执行更新</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="cleanup-files" checked>
+                                <label class="form-check-label" for="cleanup-files">
+                                    <strong>清理临时文件</strong>
+                                </label>
+                                <div class="form-text">更新完成后删除临时文件</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="health-check" checked>
+                                <label class="form-check-label" for="health-check">
+                                    <strong>健康检查</strong>
+                                </label>
+                                <div class="form-text">更新完成后执行健康检查</div>
+                            </div>
+                        </div>
+                        <!-- 已移除MD5校验选项 -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" id="submit-btn">
+                    <i class="fas fa-upload"></i> 上传并更新
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="preview-btn" style="display: none;">
+                    <i class="fas fa-eye"></i> 预览
+                </button>
+                <a href="{% url 'project_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 预览模态框 -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">更新预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    即将执行以下更新操作：
+                </div>
+                
+                <div class="mb-4">
+                    <h6>项目信息</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="30%">项目</th>
+                            <td id="preview-project"></td>
+                        </tr>
+                        <tr>
+                            <th>包类型</th>
+                            <td id="preview-type"></td>
+                        </tr>
+                        <tr>
+                            <th>版本号</th>
+                            <td id="preview-version"></td>
+                        </tr>
+                        <tr>
+                            <th>文件名</th>
+                            <td id="preview-filename"></td>
+                        </tr>
+                        <tr>
+                            <th>文件大小</th>
+                            <td id="preview-filesize"></td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>目标虚拟机</h6>
+                    <div id="preview-servers" class="list-group"></div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6>更新选项</h6>
+                    <div id="preview-options" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirm-deploy">
+                    <i class="fas fa-play"></i> 确认更新
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 引入Select2 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化Select2搜索下拉框
+    $('.select2-project').select2({
+        placeholder: "请选择项目",
+        allowClear: false,
+        width: '100%'
+    });
+    
+    const projectSelect = document.querySelector('.select2-project');
+    const fileInput = document.getElementById('{{ form.file.id_for_label }}');
+    const versionInput = document.getElementById('{{ form.version.id_for_label }}');
+    const serverPreview = document.getElementById('server-preview');
+    const serverList = document.getElementById('server-list');
+    const noServersAlert = document.getElementById('no-servers-alert');
+    const serverCount = document.getElementById('server-count');
+    const fileInfo = document.getElementById('file-info');
+    const uploadProgress = document.getElementById('upload-progress');
+    const progressBar = uploadProgress.querySelector('.progress-bar');
+    const submitBtn = document.getElementById('submit-btn');
+    const previewBtn = document.getElementById('preview-btn');
+    const browseBtn = document.getElementById('browse-btn');
+    const uploadForm = document.getElementById('upload-form');
+    
+    // 项目选择变化时加载服务器列表
+    if (projectSelect) {
+        projectSelect.addEventListener('change', function() {
+            updateServerList(this.value);
+        });
+        
+        // 初始加载（如果有预选值）
+        if (projectSelect.value) {
+            updateServerList(projectSelect.value);
+        }
+    }
+    
+    // 文件选择变化时显示文件信息
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                updateFileInfo(file);
+                previewBtn.style.display = 'inline-block';
+            } else {
+                fileInfo.style.display = 'none';
+                previewBtn.style.display = 'none';
+            }
+        });
+    }
+    
+    // 浏览按钮
+    if (browseBtn) {
+        browseBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+    }
+    
+    // 更新虚拟机列表（使用正确的API）
+    function updateServerList(projectId) {
+        if (!projectId) {
+            serverPreview.style.display = 'none';
+            return;
+        }
+        
+        // 使用正确的API端点
+        fetch(`/api/project/${projectId}/vm-status/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    serverList.innerHTML = '';
+                    
+                    if (data.vm_status_list && data.vm_status_list.length > 0) {
+                        data.vm_status_list.forEach(vm => {
+                            const serverCol = document.createElement('div');
+                            serverCol.className = 'col-md-6 mb-3';
+                            serverCol.innerHTML = `
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-server fa-2x text-${vm.is_healthy ? 'success' : 'danger'}"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">${vm.name}</h6>
+                                                <small class="text-muted">${vm.ip}</small>
+                                            </div>
+                                        </div>
+                                        <div class="small">
+                                            <div class="mb-1">
+                                                <i class="fas fa-microchip"></i> 虚拟机
+                                            </div>
+                                            <div class="mb-1">
+                                                <i class="fas fa-plug"></i> 
+                                                <span class="badge bg-${vm.is_healthy ? 'success' : 'danger'}">
+                                                    ${vm.is_healthy ? '在线' : '离线'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <i class="fas fa-home"></i> 
+                                                宿主机: ${vm.host || '未知'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            serverList.appendChild(serverCol);
+                        });
+                        
+                        serverCount.textContent = data.vm_status_list.length;
+                        serverPreview.style.display = 'block';
+                        noServersAlert.style.display = 'none';
+                    } else {
+                        serverPreview.style.display = 'block';
+                        noServersAlert.style.display = 'block';
+                    }
+                } else {
+                    serverPreview.style.display = 'block';
+                    noServersAlert.style.display = 'block';
+                    noServersAlert.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${data.message || '加载虚拟机列表失败'}`;
+                }
+            })
+            .catch(error => {
+                console.error('加载虚拟机列表失败:', error);
+                serverPreview.style.display = 'block';
+                noServersAlert.style.display = 'block';
+                noServersAlert.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 加载虚拟机列表失败，请稍后重试`;
+            });
+    }
+    
+    // 更新文件信息（移除MD5计算）
+    function updateFileInfo(file) {
+        document.getElementById('file-name').value = file.name;
+        document.getElementById('file-size').value = formatFileSize(file.size);
+        document.getElementById('file-type').value = file.type || '未知';
+        
+        fileInfo.style.display = 'block';
+        
+        // 自动填充版本号（从文件名提取）
+        if (versionInput && !versionInput.value) {
+            const versionMatch = file.name.match(/(\d+(\.\d+)+)/);
+            if (versionMatch) {
+                versionInput.value = 'V' + versionMatch[1];
+            }
+        }
+    }
+    
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // 预览按钮
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            showPreview();
+        });
+    }
+    
+    // 显示预览
+    function showPreview() {
+        // 收集预览信息
+        const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+        const projectName = selectedOption ? selectedOption.textContent : '';
+        const packageTypeSelect = document.getElementById('{{ form.package_type.id_for_label }}');
+        const packageType = packageTypeSelect.options[packageTypeSelect.selectedIndex].textContent;
+        const version = versionInput.value;
+        const file = fileInput.files[0];
+        
+        // 更新预览内容
+        document.getElementById('preview-project').textContent = projectName || '未选择';
+        document.getElementById('preview-type').textContent = packageType || '未选择';
+        document.getElementById('preview-version').textContent = version || '未填写';
+        document.getElementById('preview-filename').textContent = file ? file.name : '未选择';
+        document.getElementById('preview-filesize').textContent = file ? formatFileSize(file.size) : '0 B';
+        
+        // 更新服务器预览
+        const previewServers = document.getElementById('preview-servers');
+        previewServers.innerHTML = '';
+        
+        const serverCards = serverList.querySelectorAll('.card');
+        serverCards.forEach(card => {
+            const serverName = card.querySelector('h6').textContent;
+            const serverIp = card.querySelector('small').textContent;
+            const serverStatus = card.querySelector('.badge').textContent;
+            const serverStatusClass = card.querySelector('.badge').className.includes('success') ? 'success' : 'danger';
+            
+            const serverItem = document.createElement('div');
+            serverItem.className = 'list-group-item';
+            serverItem.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${serverName}</h6>
+                    <span class="badge bg-${serverStatusClass}">${serverStatus}</span>
+                </div>
+                <p class="mb-1">${serverIp}</p>
+            `;
+            previewServers.appendChild(serverItem);
+        });
+        
+        // 更新选项预览
+        const previewOptions = document.getElementById('preview-options');
+        previewOptions.innerHTML = '';
+        
+        const options = [
+            { id: 'auto-deploy', label: '自动更新' },
+            { id: 'cleanup-files', label: '清理临时文件' },
+            { id: 'health-check', label: '健康检查' }
+        ];
+        
+        options.forEach(option => {
+            const isChecked = document.getElementById(option.id).checked;
+            const optionItem = document.createElement('div');
+            optionItem.className = 'list-group-item';
+            optionItem.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <span>${option.label}</span>
+                    <span class="badge bg-${isChecked ? 'success' : 'secondary'}">
+                        ${isChecked ? '启用' : '禁用'}
+                    </span>
+                </div>
+            `;
+            previewOptions.appendChild(optionItem);
+        });
+        
+        // 显示模态框
+        const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+        previewModal.show();
+    }
+    
+    // 确认更新按钮
+    document.getElementById('previewModal').addEventListener('shown.bs.modal', function() {
+        const confirmBtn = document.getElementById('confirm-deploy');
+        
+        confirmBtn.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('previewModal'));
+            modal.hide();
+            
+            // 提交表单
+            uploadForm.dispatchEvent(new Event('submit'));
+        });
+    });
+    
+    // 表单提交处理
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 验证表单
+            if (!validateForm()) {
+                return false;
+            }
+            
+            // 禁用提交按钮
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+            submitBtn.disabled = true;
+            
+            // 显示进度条
+            uploadProgress.style.display = 'block';
+            
+            // 创建FormData
+            const formData = new FormData(this);
+            
+            // 添加选项（移除MD5校验）
+            formData.append('auto_deploy', document.getElementById('auto-deploy').checked);
+            formData.append('cleanup_files', document.getElementById('cleanup-files').checked);
+            formData.append('health_check', document.getElementById('health-check').checked);
+            
+            // 使用XMLHttpRequest来跟踪上传进度
+            const xhr = new XMLHttpRequest();
+            
+            xhr.upload.addEventListener('progress', function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.setAttribute('aria-valuenow', percentComplete);
+                    
+                    if (percentComplete < 100) {
+                        submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 上传中 ${Math.round(percentComplete)}%`;
+                    }
+                }
+            });
+            
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        
+                        if (response.success) {
+                            submitBtn.innerHTML = '<i class="fas fa-check"></i> 上传成功';
+                            showAlert('文件上传成功！更新任务已开始执行。', 'success');
+                            
+                            // 重定向到任务详情页
+                            setTimeout(() => {
+                                if (response.redirect_url) {
+                                    window.location.href = response.redirect_url;
+                                } else {
+                                    window.location.href = "{% url 'task_list' %}";
+                                }
+                            }, 2000);
+                        } else {
+                            submitBtn.innerHTML = originalHtml;
+                            submitBtn.disabled = false;
+                            uploadProgress.style.display = 'none';
+                            showAlert('上传失败: ' + response.message, 'danger');
+                        }
+                    } catch (error) {
+                        submitBtn.innerHTML = originalHtml;
+                        submitBtn.disabled = false;
+                        uploadProgress.style.display = 'none';
+                        showAlert('服务器响应异常，请重试', 'danger');
+                    }
+                } else {
+                    submitBtn.innerHTML = originalHtml;
+                    submitBtn.disabled = false;
+                    uploadProgress.style.display = 'none';
+                    showAlert('上传失败: HTTP ' + xhr.status, 'danger');
+                }
+            });
+            
+            xhr.addEventListener('error', function() {
+                submitBtn.innerHTML = originalHtml;
+                submitBtn.disabled = false;
+                uploadProgress.style.display = 'none';
+                showAlert('网络连接失败，请检查网络后重试', 'danger');
+            });
+            
+            xhr.open('POST', this.action);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.send(formData);
+            
+            return false;
+        });
+    }
+    
+    // 表单验证
+    function validateForm() {
+        let isValid = true;
+        let errorMessage = '';
+        
+        // 检查项目
+        if (!projectSelect.value) {
+            isValid = false;
+            errorMessage = '请选择项目';
+        }
+        
+        // 检查文件
+        if (!fileInput.files.length) {
+            isValid = false;
+            errorMessage = '请选择要上传的文件';
+        } else if (fileInput.files[0].size > 1024 * 1024 * 1024) { // 1GB限制
+            isValid = false;
+            errorMessage = '文件大小不能超过1GB';
+        }
+        
+        // 检查版本号
+        if (!versionInput.value.trim()) {
+            isValid = false;
+            errorMessage = '请输入版本号';
+        }
+        
+        // 检查包类型
+        const packageTypeSelect = document.getElementById('{{ form.package_type.id_for_label }}');
+        if (!packageTypeSelect.value) {
+            isValid = false;
+            errorMessage = '请选择包类型';
+        }
+        
+        if (!isValid) {
+            showAlert(errorMessage, 'danger');
+        }
+        
+        return isValid;
+    }
+    
+    // 显示提示信息
+    function showAlert(message, type) {
+        // 移除现有提示
+        const existingAlert = document.querySelector('.alert-dismissible');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // 创建新提示
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // 插入到表单上方
+        uploadForm.parentNode.insertBefore(alertDiv, uploadForm);
+    }
+});
+</script>
+
+<style>
+.card.h-100 {
+    transition: all 0.3s ease;
+}
+
+.card.h-100:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#server-preview .card {
+    border-left: 4px solid #007bff;
+}
+
+#file-info input[readonly] {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* Select2样式调整 */
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+</style>
+{% endblock %}

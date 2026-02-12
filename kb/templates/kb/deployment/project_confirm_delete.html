@@ -1,0 +1,158 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'project_list' %}">项目管理</a></li>
+<li class="breadcrumb-item"><a href="{% url 'project_detail' pk=project.pk %}">{{ project.name }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">删除项目</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header bg-danger text-white">
+        <h4 class="card-title mb-0">
+            <i class="fas fa-exclamation-triangle"></i> 确认删除项目
+        </h4>
+    </div>
+    
+    <div class="card-body">
+        <div class="alert alert-danger">
+            <h5><i class="fas fa-exclamation-circle"></i> 警告：此操作不可恢复！</h5>
+            <p class="mb-0">确定要删除项目 <strong>"{{ project.name }}"</strong> 吗？</p>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">项目信息</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="40%">项目名称</th>
+                                <td>{{ project.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>项目代号</th>
+                                <td><code>{{ project.code }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>状态</th>
+                                <td>
+                                    <span class="badge bg-{% if project.status == 'active' %}success{% elif project.status == 'maintenance' %}warning{% else %}secondary{% endif %}">
+                                        {{ project.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>创建人</th>
+                                <td>{{ project.created_by.username|default:"系统" }}</td>
+                            </tr>
+                            <tr>
+                                <th>创建时间</th>
+                                <td>{{ project.created_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">相关数据统计</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <h6>删除项目将同时删除以下数据：</h6>
+                            <ul class="mb-0">
+                                <li>关联的虚拟机配置（{{ vm_count }} 个）</li>
+                                <li>更新脚本（1 个）</li>
+                                <li>更新任务（{{ task_count }} 个）</li>
+                                <li>更新历史记录</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <form method="post" id="delete-form">
+            {% csrf_token %}
+            
+            <div class="alert alert-info">
+                <h6><i class="fas fa-info-circle"></i> 重要提示</h6>
+                <ul class="mb-0">
+                    <li>此操作无法撤销</li>
+                    <li>所有相关数据将被永久删除</li>
+                    <li>请确保此操作是必要的</li>
+                </ul>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-group mb-3">
+                        <label for="confirm-text" class="form-label">
+                            请输入项目代号 <code>{{ project.code }}</code> 以确认删除：
+                        </label>
+                        <input type="text" class="form-control" id="confirm-text" 
+                               placeholder="请输入项目代号" required>
+                        <div class="form-text">输入项目代号以确认您了解此操作的后果</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-danger" id="delete-btn" disabled>
+                    <i class="fas fa-trash"></i> 确认删除项目
+                </button>
+                <a href="{% url 'project_detail' pk=project.pk %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmInput = document.getElementById('confirm-text');
+    const deleteBtn = document.getElementById('delete-btn');
+    const deleteForm = document.getElementById('delete-form');
+    const projectCode = "{{ project.code }}";
+    
+    // 验证输入的项目代号
+    confirmInput.addEventListener('input', function() {
+        if (this.value.trim() === projectCode) {
+            deleteBtn.disabled = false;
+            deleteBtn.classList.remove('btn-danger', 'btn-outline-danger');
+            deleteBtn.classList.add('btn-danger');
+        } else {
+            deleteBtn.disabled = true;
+            deleteBtn.classList.remove('btn-danger');
+            deleteBtn.classList.add('btn-outline-danger');
+        }
+    });
+    
+    // 确认删除
+    deleteForm.addEventListener('submit', function(e) {
+        if (confirmInput.value.trim() !== projectCode) {
+            e.preventDefault();
+            alert('请输入正确的项目代号！');
+            return false;
+        }
+        
+        if (!confirm('确定要永久删除此项目吗？此操作无法撤销！')) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // 显示加载状态
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 删除中...';
+    });
+});
+</script>
+{% endblock %}

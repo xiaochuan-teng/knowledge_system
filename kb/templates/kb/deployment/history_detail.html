@@ -1,0 +1,577 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'history_list' %}">更新历史</a></li>
+<li class="breadcrumb-item active" aria-current="page">历史详情</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="card-title mb-0">
+                <i class="fas fa-history"></i> 更新历史详情
+            </h4>
+            <p class="text-muted mb-0 mt-1">
+                记录ID: {{ history.id }} • {{ history.completed_at|date:"Y-m-d H:i:s" }}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'history_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+            <button type="button" class="btn btn-outline-primary ms-2" id="export-detail-btn">
+                <i class="fas fa-download"></i> 导出
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <!-- 基本信息 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-info-circle"></i> 基本信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="40%">任务ID</th>
+                                <td>
+                                    <a href="{% url 'task_detail' pk=history.task.pk %}" class="text-decoration-none">
+                                        <code>{{ history.task.task_id }}</code>
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>任务名称</th>
+                                <td>{{ history.task.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>项目</th>
+                                <td>
+                                    <a href="{% url 'project_detail' pk=history.task.project.pk %}" class="text-decoration-none">
+                                        {{ history.task.project.name }}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>包版本</th>
+                                <td>{{ history.package_version }}</td>
+                            </tr>
+                            <tr>
+                                <th>虚拟机</th>
+                                <td>
+                                    {{ history.project_vm.virtual_machine.name }}
+                                    <div class="text-muted small">
+                                        <code>{{ history.project_vm.get_ip }}</code>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>更新状态</th>
+                                <td>
+                                    <span class="badge bg-{% if history.status == 'success' %}success{% else %}danger{% endif %}">
+                                        {{ history.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-chart-line"></i> 执行信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="40%">开始时间</th>
+                                <td>{{ history.started_at|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            <tr>
+                                <th>完成时间</th>
+                                <td>{{ history.completed_at|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            <tr>
+                                <th>持续时间</th>
+                                <td>
+                                    <strong>{{ history.duration }}</strong> 秒
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>健康检查</th>
+                                <td>
+                                    <div class="d-flex">
+                                        <div class="me-3">
+                                            <span class="me-1">Java服务:</span>
+                                            <span class="badge bg-{% if history.java_service_healthy %}success{% else %}danger{% endif %}">
+                                                {{ history.java_service_healthy|yesno:"正常,异常" }}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span class="me-1">C++服务:</span>
+                                            <span class="badge bg-{% if history.cpp_service_healthy %}success{% else %}danger{% endif %}">
+                                                {{ history.cpp_service_healthy|yesno:"正常,异常" }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>脚本版本</th>
+                                <td>
+                                    {% if history.script_content %}
+                                    <span class="badge bg-info">已执行</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">无脚本</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 执行结果 -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-check-circle"></i> 执行结果</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="replay-btn">
+                        <i class="fas fa-redo"></i> 重新执行
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">结果消息</h6>
+                </div>
+                <div class="card-body">
+                    {% if history.message %}
+                    <div class="alert alert-{% if history.status == 'success' %}success{% else %}danger{% endif %}">
+                        {{ history.message|linebreaks }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 无结果消息
+                    </div>
+                    {% endif %}
+                    
+                    {% if history.error_message %}
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle"></i> 错误信息</h6>
+                        <pre class="mb-0">{{ history.error_message }}</pre>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 更新脚本 -->
+        {% if history.script_content %}
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-code"></i> 执行的脚本</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-info" id="copy-script-btn">
+                        <i class="fas fa-copy"></i> 复制脚本
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-script-btn">
+                        <i class="fas fa-eye"></i> 显示脚本
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body p-0" id="script-container" style="display: none;">
+                    <pre id="script-content" class="script-content">{{ history.script_content }}</pre>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- 详细日志 -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-file-alt"></i> 详细日志</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="copy-log-btn">
+                        <i class="fas fa-copy"></i> 复制日志
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="download-log-btn">
+                        <i class="fas fa-download"></i> 下载日志
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body p-0">
+                    <pre id="detail-log" class="log-output">{{ task_log|default:"暂无详细日志" }}</pre>
+                </div>
+            </div>
+            
+            <div class="mt-2 text-end">
+                <small class="text-muted">日志大小: {{ task_log|length|filesizeformat }}</small>
+            </div>
+        </div>
+        
+        <!-- 相关记录 -->
+        <div class="mb-4">
+            <h5><i class="fas fa-link"></i> 相关记录</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">同一任务的其他更新</h6>
+                        </div>
+                        <div class="card-body">
+                            {% with related_history=history.task.deploymenthistory_set.exclude.id=history.id|slice:":3" %}
+                            {% if related_history %}
+                            <div class="list-group list-group-flush">
+                                {% for related in related_history %}
+                                <a href="{% url 'history_detail' pk=related.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <span>{{ related.project_vm.virtual_machine.name }}</span>
+                                        <span class="badge bg-{% if related.status == 'success' %}success{% else %}danger{% endif %}">
+                                            {{ related.status }}
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ related.completed_at|date:"Y-m-d H:i" }} • 用时: {{ related.duration }}秒
+                                    </small>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> 无其他相关记录
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">同一虚拟机的最近更新</h6>
+                        </div>
+                        <div class="card-body">
+                            {% with vm_history=history.project_vm.deploymenthistory_set.exclude.id=history.id|slice:":3" %}
+                            {% if vm_history %}
+                            <div class="list-group list-group-flush">
+                                {% for vm_hist in vm_history %}
+                                <a href="{% url 'history_detail' pk=vm_hist.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <span>{{ vm_hist.task.name }}</span>
+                                        <span class="badge bg-{% if vm_hist.status == 'success' %}success{% else %}danger{% endif %}">
+                                            {{ vm_hist.status }}
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ vm_hist.completed_at|date:"Y-m-d H:i" }} • 版本: {{ vm_hist.package_version }}
+                                    </small>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> 无其他相关记录
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'task_detail' pk=history.task.pk %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-tasks"></i> 查看任务详情
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'project_detail' pk=history.task.project.pk %}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-project-diagram"></i> 查看项目
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button type="button" class="btn btn-outline-success w-100" id="retry-deploy-btn">
+                            <i class="fas fa-redo"></i> 重新更新
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button type="button" class="btn btn-outline-danger w-100" id="delete-history-btn">
+                            <i class="fas fa-trash"></i> 删除记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>警告：此操作不可恢复！</strong>
+                </div>
+                <p>确定要删除此更新历史记录吗？</p>
+                <p class="text-muted">
+                    删除后将无法恢复此记录，但不会影响实际更新结果。
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form method="post" action="{% url 'history_delete' pk=history.pk %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> 确认删除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const copyScriptBtn = document.getElementById('copy-script-btn');
+    const toggleScriptBtn = document.getElementById('toggle-script-btn');
+    const scriptContainer = document.getElementById('script-container');
+    const scriptContent = document.getElementById('script-content');
+    const copyLogBtn = document.getElementById('copy-log-btn');
+    const downloadLogBtn = document.getElementById('download-log-btn');
+    const detailLog = document.getElementById('detail-log');
+    const exportDetailBtn = document.getElementById('export-detail-btn');
+    const retryDeployBtn = document.getElementById('retry-deploy-btn');
+    const replayBtn = document.getElementById('replay-btn');
+    const deleteHistoryBtn = document.getElementById('delete-history-btn');
+    
+    // 显示/隐藏脚本
+    if (toggleScriptBtn && scriptContainer) {
+        toggleScriptBtn.addEventListener('click', function() {
+            if (scriptContainer.style.display === 'none') {
+                scriptContainer.style.display = 'block';
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> 隐藏脚本';
+            } else {
+                scriptContainer.style.display = 'none';
+                this.innerHTML = '<i class="fas fa-eye"></i> 显示脚本';
+            }
+        });
+    }
+    
+    // 复制脚本
+    if (copyScriptBtn && scriptContent) {
+        copyScriptBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(scriptContent.textContent)
+                .then(() => {
+                    showAlert('脚本已复制到剪贴板', 'success');
+                })
+                .catch(err => {
+                    showAlert('复制失败: ' + err, 'danger');
+                });
+        });
+    }
+    
+    // 复制日志
+    if (copyLogBtn && detailLog) {
+        copyLogBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(detailLog.textContent)
+                .then(() => {
+                    showAlert('日志已复制到剪贴板', 'success');
+                })
+                .catch(err => {
+                    showAlert('复制失败: ' + err, 'danger');
+                });
+        });
+    }
+    
+    // 下载日志
+    if (downloadLogBtn && detailLog) {
+        downloadLogBtn.addEventListener('click', function() {
+            const blob = new Blob([detailLog.textContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `history_{{ history.id }}_log.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+    
+    // 导出详情
+    if (exportDetailBtn) {
+        exportDetailBtn.addEventListener('click', function() {
+            // 构建导出URL
+            const params = new URLSearchParams();
+            params.append('format', 'json');
+            params.append('history_id', '{{ history.id }}');
+            
+            const url = `/api/history/export/?${params.toString()}`;
+            window.location.href = url;
+            
+            showAlert('导出任务已开始，文件将自动下载', 'success');
+        });
+    }
+    
+    // 重新更新
+    if (retryDeployBtn) {
+        retryDeployBtn.addEventListener('click', function() {
+            if (!confirm('确定要重新更新此虚拟机吗？')) return;
+            
+            const originalHtml = showLoading(this);
+            
+            fetch(`/api/history/{{ history.id }}/retry/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                restoreButton(this, originalHtml);
+                
+                if (data.success) {
+                    showAlert('重新更新任务已创建', 'success');
+                    
+                    // 重定向到新任务详情页
+                    setTimeout(() => {
+                        if (data.task_id) {
+                            window.location.href = `/deployment/task/${data.task_id}/`;
+                        }
+                    }, 2000);
+                } else {
+                    showAlert('重新更新失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                restoreButton(this, originalHtml);
+                showAlert('请求失败: ' + error, 'danger');
+            });
+        });
+    }
+    
+    // 重新执行（相同参数）
+    if (replayBtn) {
+        replayBtn.addEventListener('click', function() {
+            if (!confirm('确定要使用相同参数重新执行此更新吗？')) return;
+            
+            const originalHtml = showLoading(this);
+            
+            fetch(`/api/history/{{ history.id }}/replay/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                restoreButton(this, originalHtml);
+                
+                if (data.success) {
+                    showAlert('重新执行任务已创建', 'success');
+                    
+                    // 重定向到新任务详情页
+                    setTimeout(() => {
+                        if (data.task_id) {
+                            window.location.href = `/deployment/task/${data.task_id}/`;
+                        }
+                    }, 2000);
+                } else {
+                    showAlert('重新执行失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                restoreButton(this, originalHtml);
+                showAlert('请求失败: ' + error, 'danger');
+            });
+        });
+    }
+    
+    // 删除记录
+    if (deleteHistoryBtn) {
+        deleteHistoryBtn.addEventListener('click', function() {
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        });
+    }
+    
+    // 页面加载后自动滚动到错误位置（如果有错误）
+    {% if history.status != 'success' %}
+    setTimeout(() => {
+        const errorElements = document.querySelectorAll('.alert-danger');
+        if (errorElements.length > 0) {
+            errorElements[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 500);
+    {% endif %}
+});
+</script>
+
+<style>
+.script-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: pre;
+    overflow-x: auto;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    max-height: 500px;
+}
+
+.log-output {
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 11px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+    transform: translateX(2px);
+    transition: all 0.2s ease;
+}
+</style>
+{% endblock %}

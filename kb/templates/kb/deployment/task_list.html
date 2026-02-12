@@ -1,0 +1,674 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">更新任务</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="card-title mb-0">
+                <i class="fas fa-tasks"></i> 更新任务管理
+            </h4>
+        </div>
+        <div>
+            <button type="button" class="btn btn-outline-primary me-2" id="refresh-tasks">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+            <a href="{% url 'package_upload' %}" class="btn btn-primary">
+                <i class="fas fa-upload"></i> 上传并更新
+            </a>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="q" value="{{ search_query }}" 
+                       placeholder="搜索任务ID、名称或描述...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="status">
+                    <option value="">所有状态</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>待开始</option>
+                    <option value="uploading" {% if status_filter == 'uploading' %}selected{% endif %}>上传中</option>
+                    <option value="deploying" {% if status_filter == 'deploying' %}selected{% endif %}>更新中</option>
+                    <option value="success" {% if status_filter == 'success' %}selected{% endif %}>成功</option>
+                    <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>失败</option>
+                    <option value="partial" {% if status_filter == 'partial' %}selected{% endif %}>部分成功</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="project">
+                    <option value="">所有项目</option>
+                    {% for project in projects %}
+                    <option value="{{ project.id }}" {% if project_id == project.id|stringformat:"s" %}selected{% endif %}>
+                        {{ project.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+                <a href="{% url 'task_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-redo"></i> 重置
+                </a>
+            </div>
+        </form>
+        
+        <!-- 统计卡片 - 已修复 -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3">
+                <div class="card bg-primary bg-opacity-10 border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">全部任务</h6>
+                                <h4 class="card-text fw-bold text-primary">{{ total_count|default:0 }}</h4>
+                            </div>
+                            <div class="text-primary">
+                                <i class="fas fa-tasks fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">包含所有状态的任务</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3">
+                <div class="card bg-warning bg-opacity-10 border-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">进行中</h6>
+                                <h4 class="card-text fw-bold text-warning">{{ deploying_count|default:0 }}</h4>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">更新中或上传中的任务</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3">
+                <div class="card bg-success bg-opacity-10 border-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">成功</h6>
+                                <h4 class="card-text fw-bold text-success">{{ success_count|default:0 }}</h4>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">更新成功的任务</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-12 mb-3">
+                <div class="card bg-danger bg-opacity-10 border-danger">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title text-muted mb-1">失败</h6>
+                                <h4 class="card-text fw-bold text-danger">{{ failed_count|default:0 }}</h4>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">更新失败的任务</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 任务列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        </th>
+                        <th width="15%">任务ID</th>
+                        <th width="25%">任务名称</th>
+                        <th width="15%">项目</th>
+                        <th width="10%">状态</th>
+                        <th width="15%">进度</th>
+                        <th width="10%">创建时间</th>
+                        <th width="10%">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tasks-table-body">
+                    {% for task in page_obj %}
+                    <tr id="task-{{ task.id }}" class="task-row" data-task-id="{{ task.id }}">
+                        <td>
+                            <code class="task-id">{{ task.task_id|truncatechars:10 }}</code>
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ task.name }}</strong>
+                                {% if task.description %}
+                                <div class="text-muted small">{{ task.description|truncatechars:50 }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <a href="{% url 'project_detail' pk=task.project.pk %}" class="text-decoration-none">
+                                {{ task.project.name }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge task-status bg-{% if task.status == 'success' %}success{% elif task.status == 'failed' %}danger{% elif task.status == 'deploying' %}warning{% elif task.status == 'partial' %}info{% else %}secondary{% endif %}">
+                                {{ task.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar task-progress bg-{% if task.status == 'success' %}success{% elif task.status == 'failed' %}danger{% elif task.status == 'deploying' %}warning{% elif task.status == 'partial' %}info{% else %}secondary{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ task.progress }}%;" 
+                                     aria-valuenow="{{ task.progress }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="small text-muted text-center">{{ task.progress }}%</div>
+                        </td>
+                        <td>
+                            <div class="small">{{ task.created_at|date:"m-d H:i" }}</div>
+                            <div class="text-muted smaller">{{ task.created_at|timesince }}前</div>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'task_detail' pk=task.pk %}" class="btn btn-outline-info" title="查看详情">
+                                    详情
+                                </a>
+                                
+                                <!-- 删除按钮 -->
+                                <button type="button" class="btn btn-outline-danger delete-task-btn" 
+                                        data-task-id="{{ task.id }}" title="删除任务"
+                                        data-task-name="{{ task.name }}"
+                                        {% if task.status == 'deploying' or task.status == 'uploading' %}disabled{% endif %}>
+                                    删除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="py-4">
+                                <i class="fas fa-tasks fa-3x text-muted mb-3"></i>
+                                <p class="text-muted mb-3">暂无更新任务</p>
+                                <a href="{% url 'package_upload' %}" class="btn btn-primary">
+                                    <i class="fas fa-upload"></i> 创建第一个更新任务
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="任务分页" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}" title="第一页">
+                        &laquo;
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}" title="上一页">
+                        &lsaquo;
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">&lsaquo;</span>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}" title="下一页">
+                        &rsaquo;
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}" title="最后一页">
+                        &raquo;
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&rsaquo;</span>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+                {% endif %}
+            </ul>
+            <p class="text-center text-muted small">
+                显示 {{ page_obj.start_index }}-{{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }} 条记录
+            </p>
+        </nav>
+        {% endif %}        
+    </div>
+</div>
+
+<!-- 任务详情模态框 -->
+<div class="modal fade" id="taskDetailModal" tabindex="-1" aria-labelledby="taskDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskDetailModalLabel">
+                    <i class="fas fa-info-circle"></i> 任务详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="task-detail-content">
+                    <!-- 动态加载的内容 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> 确认删除
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="delete-confirm-message">确定要删除选中的任务吗？此操作不可恢复。</p>
+                <div id="deleting-tasks-list" class="mt-2" style="display: none;">
+                    <p class="small text-muted mb-1">即将删除的任务：</p>
+                    <ul id="tasks-to-delete" class="small text-muted"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">
+                    <i class="fas fa-trash"></i> 确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const refreshBtn = document.getElementById('refresh-tasks');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    const deleteConfirmMessage = document.getElementById('delete-confirm-message');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    const tasksToDeleteList = document.getElementById('tasks-to-delete');
+    const deletingTasksList = document.getElementById('deleting-tasks-list');
+    let currentTaskId = null;
+    let autoRefreshInterval = null;
+    
+    // 初始化Bootstrap模态框
+    let deleteModal = null;
+    if (deleteConfirmModal) {
+        deleteModal = new bootstrap.Modal(deleteConfirmModal);
+    }
+    
+    // 使用事件委托来绑定动态生成的按钮
+    document.addEventListener('click', function(event) {
+        // 删除按钮
+        if (event.target.closest('.delete-task-btn')) {
+            const btn = event.target.closest('.delete-task-btn');
+            const taskId = btn.getAttribute('data-task-id');
+            const taskName = btn.getAttribute('data-task-name') || '任务';
+            showDeleteConfirm(taskId, taskName, btn);
+        }
+    });
+    
+    // 显示删除确认模态框
+    function showDeleteConfirm(taskId, taskName, button) {
+        currentTaskId = taskId;
+        
+        // 更新确认消息
+        deleteConfirmMessage.textContent = `确定要删除任务 "${taskName}" 吗？此操作不可恢复。`;
+        
+        // 隐藏批量删除列表
+        deletingTasksList.style.display = 'none';
+        tasksToDeleteList.innerHTML = '';
+        
+        // 显示模态框
+        if (deleteModal) {
+            deleteModal.show();
+        }
+    }
+    
+    // 确认删除按钮点击事件
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', function() {
+            if (currentTaskId) {
+                deleteTask(currentTaskId);
+            }
+        });
+    }
+    
+    // 删除任务
+    function deleteTask(taskId) {
+        const button = document.querySelector(`.delete-task-btn[data-task-id="${taskId}"]`);
+        const originalHtml = button ? showLoading(button) : null;
+        
+        fetch(`/api/tasks/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ task_ids: [taskId] })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (button) {
+                restoreButton(button, originalHtml);
+            }
+            
+            if (deleteModal) {
+                deleteModal.hide();
+            }
+            
+            if (data.success) {
+                showAlert('任务删除成功', 'success');
+                // 移除对应的表格行
+                const row = document.getElementById(`task-${taskId}`);
+                if (row) {
+                    row.remove();
+                }
+                
+                // 更新统计数据
+                updateTaskStats();
+            } else {
+                showAlert('删除任务失败: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            if (button) {
+                restoreButton(button, originalHtml);
+            }
+            
+            if (deleteModal) {
+                deleteModal.hide();
+            }
+            
+            showAlert('请求失败: ' + error, 'danger');
+        });
+    }
+    
+    // 更新任务统计
+    function updateTaskStats() {
+        const totalCountEl = document.querySelector('.card-text.text-primary');
+        const deployingCountEl = document.querySelector('.card-text.text-warning');
+        const successCountEl = document.querySelector('.card-text.text-success');
+        const failedCountEl = document.querySelector('.card-text.text-danger');
+        
+        if (totalCountEl) {
+            const currentTotal = parseInt(totalCountEl.textContent) || 0;
+            totalCountEl.textContent = Math.max(0, currentTotal - 1);
+        }
+        
+        // 这里可以添加更精确的统计更新逻辑，但目前先简单减少总数
+    }
+    
+    // 刷新单个或多个任务状态
+    function refreshTaskStatus(taskIds) {
+        if (!taskIds || taskIds.length === 0) {
+            // 获取所有任务ID
+            taskIds = Array.from(document.querySelectorAll('.task-row[data-task-id]'))
+                .map(row => row.getAttribute('data-task-id'));
+        }
+        
+        if (taskIds.length === 0) return;
+        
+        fetch('/api/tasks/status/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ task_ids: taskIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                data.tasks.forEach(task => {
+                    updateTaskRow(task);
+                });
+            } else {
+                console.error('刷新失败:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('刷新任务状态失败:', error);
+        });
+    }
+    
+    // 更新任务行显示
+    function updateTaskRow(task) {
+        const row = document.getElementById(`task-${task.id}`);
+        if (!row) return;
+        
+        // 状态对应的CSS类
+        const statusClasses = {
+            'pending': 'secondary',
+            'uploading': 'info',
+            'deploying': 'warning',
+            'success': 'success',
+            'failed': 'danger',
+            'partial': 'info',
+            'cancelled': 'secondary'
+        };
+        
+        // 更新状态徽章
+        const statusBadge = row.querySelector('.task-status');
+        if (statusBadge) {
+            const statusClass = statusClasses[task.status] || 'secondary';
+            statusBadge.className = `badge task-status bg-${statusClass}`;
+            statusBadge.textContent = task.status_display;
+        }
+        
+        // 更新进度条
+        const progressBar = row.querySelector('.task-progress');
+        if (progressBar) {
+            const statusClass = statusClasses[task.status] || 'secondary';
+            progressBar.style.width = `${task.progress}%`;
+            progressBar.setAttribute('aria-valuenow', task.progress);
+            progressBar.className = `progress-bar task-progress bg-${statusClass}`;
+            
+            const progressText = row.querySelector('.text-muted.text-center');
+            if (progressText) {
+                progressText.textContent = `${task.progress}%`;
+            }
+        }
+        
+        // 更新删除按钮状态
+        const deleteBtn = row.querySelector('.delete-task-btn');
+        if (deleteBtn) {
+            if (task.status === 'deploying' || task.status === 'uploading') {
+                deleteBtn.disabled = true;
+            } else {
+                deleteBtn.disabled = false;
+            }
+        }
+        
+        // 更新选择框状态
+        const checkbox = row.querySelector('.task-checkbox');
+        if (checkbox) {
+            checkbox.dataset.taskStatus = task.status;
+            if (task.status === 'deploying' || task.status === 'uploading') {
+                checkbox.disabled = true;
+            } else {
+                checkbox.disabled = false;
+            }
+        }
+    }
+    
+    // 显示加载状态
+    function showLoading(button) {
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+        button.disabled = true;
+        return originalHtml;
+    }
+    
+    // 恢复按钮状态
+    function restoreButton(button, originalHtml) {
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    }
+    
+    // 显示提示消息
+    function showAlert(message, type = 'info') {
+        // 检查是否已有提示框
+        const existingAlert = document.querySelector('.global-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // 创建新的提示框
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} global-alert alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = `
+            top: 80px;
+            right: 20px;
+            z-index: 1050;
+            max-width: 400px;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+        `;
+        
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // 5秒后自动消失（除非是错误类型，需要手动关闭）
+        if (type !== 'danger') {
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    }
+    
+    // 自动刷新进行中的任务
+    function startAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+        
+        autoRefreshInterval = setInterval(() => {
+            // 只刷新进行中的任务
+            const activeTasks = Array.from(document.querySelectorAll('.task-row'))
+                .filter(row => {
+                    const statusBadge = row.querySelector('.task-status');
+                    if (!statusBadge) return false;
+                    const statusClass = statusBadge.className;
+                    return statusClass.includes('bg-warning') || statusClass.includes('bg-info');
+                })
+                .map(row => row.getAttribute('data-task-id'));
+            
+            if (activeTasks.length > 0) {
+                refreshTaskStatus(activeTasks);
+            }
+        }, 5000); // 每5秒刷新一次
+    }
+    
+    // 手动刷新按钮
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            refreshTaskStatus();
+            showAlert('任务列表已刷新', 'info');
+        });
+    }
+    
+    // 启动自动刷新
+    startAutoRefresh();
+    
+    // 页面离开时清理定时器
+    window.addEventListener('beforeunload', function() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+    });
+});
+</script>
+
+<style>
+/* 添加一些样式 */
+.btn {
+    min-width: 70px;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.delete-task-btn:not(:disabled):hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.fa-spinner {
+    margin-right: 5px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fa-spin {
+    animation: spin 1s linear infinite;
+}
+</style>
+{% endblock %}

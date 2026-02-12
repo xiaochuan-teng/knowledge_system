@@ -1,0 +1,207 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active" aria-current="page">仪表板</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="row mb-4">
+    <!-- 统计卡片 -->
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">活跃项目</h6>
+                        <h2 class="mb-0">{{ active_projects_count }}</h2>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small>总计: {{ total_projects }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">在线虚拟机</h6>
+                        <h2 class="mb-0">{{ online_vms_count }}</h2>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small>总计: {{ total_vms }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">今日任务</h6>
+                        <h2 class="mb-0">{{ today_tasks_count }}</h2>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small>成功率: {{ success_rate }}%</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">更新包</h6>
+                        <h2 class="mb-0">{{ total_packages }}</h2>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small>活跃: {{ active_packages }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 最近更新任务 -->
+    <div class="col-md-6 mb-4">
+        <div class="card deployment-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history"></i> 最近更新任务
+                </h5>
+                <a href="{% url 'task_list' %}" class="btn btn-sm btn-outline-primary">查看更多</a>
+            </div>
+            <div class="card-body">
+                {% if recent_tasks %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>任务ID</th>
+                                <th>项目</th>
+                                <th>状态</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in recent_tasks %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'task_detail' pk=task.pk %}" class="text-decoration-none">
+                                        <code>{{ task.task_id|truncatechars:8 }}</code>
+                                    </a>
+                                </td>
+                                <td>{{ task.project.name }}</td>
+                                <td>
+                                    <span class="badge bg-{% if task.status == 'success' %}success{% elif task.status == 'failed' %}danger{% elif task.status == 'deploying' %}warning{% else %}secondary{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ task.created_at|date:"H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-tasks fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">暂无更新任务</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 活跃项目 -->
+    <div class="col-md-6 mb-4">
+        <div class="card deployment-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-project-diagram"></i> 活跃项目
+                </h5>
+                <a href="{% url 'project_list' %}" class="btn btn-sm btn-outline-primary">查看全部</a>
+            </div>
+            <div class="card-body">
+                {% if active_projects %}
+                <div class="list-group list-group-flush">
+                    {% for project in active_projects %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ project.name }}</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-server"></i> {{ project.projectvmrelation_set.count }} 台虚拟机
+                                </small>
+                            </div>
+                            <div>
+                                <a href="{% url 'project_detail' pk=project.pk %}" class="btn btn-sm btn-outline-info">
+                                    详情
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-project-diagram fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">暂无活跃项目</p>
+                    <a href="{% url 'project_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 创建项目
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 仪表板特定的JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // 可以添加仪表板特定的交互
+    console.log('Dashboard loaded');
+});
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 20px;
+}
+
+.timeline-item {
+    position: relative;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -20px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #007bff;
+}
+
+.timeline-content {
+    padding-left: 10px;
+}
+</style>
+{% endblock %}

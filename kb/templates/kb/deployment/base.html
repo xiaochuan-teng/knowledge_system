@@ -1,0 +1,371 @@
+{% extends 'kb/base.html' %}
+
+{% block title %}自动化更新 - {{ title|default:"知识库" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ----- 原有样式（完全保留）----- */
+.deployment-card {
+    margin-bottom: 1.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+.progress-sm { height: 20px; }
+.script-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre;
+    overflow-x: auto;
+}
+.vm-item {
+    border-left: 3px solid #007bff;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+.status-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+.health-check .status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+.health-check .status.healthy { background-color: #28a745; }
+.health-check .status.unhealthy { background-color: #dc3545; }
+.log-output {
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 11px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+/* ----- 弹窗样式（极简）----- */
+#noticeModal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+#noticeModal .modal-content {
+    background-color: #fff;
+    margin: 50px auto;
+    padding: 0;
+    width: 90%;
+    max-width: 900px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+#noticeModal .modal-header {
+    padding: 15px 20px;
+    background-color: #fff3cd;
+    border-bottom: 1px solid #ffe69c;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+#noticeModal .modal-header h5 {
+    margin: 0;
+    color: #856404;
+    font-weight: 600;
+}
+#noticeModal .close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    color: #856404;
+    cursor: pointer;
+    padding: 0 8px;
+}
+#noticeModal .modal-body {
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+#noticeModal .modal-footer {
+    padding: 12px 20px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    text-align: right;
+}
+#noticeModal .btn-close {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block nav_deployment %}
+<li class="nav-item">
+    <a class="nav-link active" href="{% url 'deployment_dashboard' %}">
+        <i class="fas fa-rocket"></i> 自动发布
+    </a>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 面包屑导航 -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'deployment_dashboard' %}">自动发布</a></li>
+            {% block breadcrumb %}{% endblock %}
+        </ol>
+    </nav>
+    
+    <!-- 消息提示 -->
+    {% if messages %}
+    <div class="messages mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- 侧边栏导航（完全保留） -->
+        <div class="col-md-3">
+            <div class="card deployment-card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-sitemap"></i> 更新管理
+                    </h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'deployment_dashboard' %}" 
+                       class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'deployment_dashboard' %}active{% endif %}">
+                         仪表板
+                    </a>
+                    <a href="{% url 'project_list' %}" 
+                       class="list-group-item list-group-item-action {% if 'project' in request.resolver_match.url_name and 'script' not in request.resolver_match.url_name %}active{% endif %}">
+                         项目管理
+                    </a>
+                    <a href="{% url 'package_upload' %}" 
+                       class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'package_upload' %}active{% endif %}">
+                         上传更新包
+                    </a>
+                    <a href="{% url 'task_list' %}" 
+                       class="list-group-item list-group-item-action {% if 'task' in request.resolver_match.url_name %}active{% endif %}">
+                         更新任务
+                    </a>
+                    <a href="{% url 'history_list' %}" 
+                       class="list-group-item list-group-item-action {% if 'history' in request.resolver_match.url_name %}active{% endif %}">
+                         更新历史
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 快速操作卡片 -->
+            <div class="card deployment-card mt-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-bolt"></i> 快速操作
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'project_create' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus"></i> 创建项目
+                        </a>
+                        <a href="{% url 'package_upload' %}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-upload"></i> 上传并更新
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========= 注意事项卡片（核心修改：内联onclick逻辑）========= -->
+            <div class="card deployment-card mt-3 border-warning">
+                <div class="card-header bg-warning bg-opacity-15">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning"></i> 使用须知 · 必读
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="d-grid gap-2">
+                        <!-- 直接内联打开逻辑，无函数依赖 -->
+                        <button type="button" class="btn btn-sm btn-warning" onclick="document.getElementById('noticeModal').style.display='block';document.body.style.overflow='hidden'">
+                            <i class="fas fa-info-circle"></i> 查看完整注意事项
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- ========= 注意事项卡片结束 ========= -->
+        </div>  <!-- 侧边栏 col-md-3 结束 -->
+        
+        <!-- 主内容区域 -->
+        <div class="col-md-9">
+            {% block deployment_content %}
+            {% endblock %}
+        </div>
+    </div>
+</div>
+
+<!-- ========= 弹窗HTML（内联关闭逻辑）========= -->
+<div id="noticeModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5><i class="fas fa-exclamation-triangle text-warning"></i> 自动发布功能使用须知</h5>
+            <!-- 内联关闭逻辑 -->
+            <button type="button" class="close" onclick="document.getElementById('noticeModal').style.display='none';document.body.style.overflow=''">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- ----- 注意事项内容（完全保留）----- -->
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="fas fa-check-circle"></i> 适用范围</h6>
+                <ul class="list-unstyled ms-3">
+                    <li><span class="badge bg-secondary me-2">仅限</span> Linux x86_64 服务器，用于更新应用程序版本</li>
+                    <li><span class="badge bg-secondary me-2">不支持</span> Windows 服务器 / ARM 架构服务器</li>
+                    <li><span class="badge bg-secondary me-2">容器</span> 仅支持 Tomcat（Java / H5）</li>
+                </ul>
+            </div>
+            <hr>
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="fas fa-archive"></i> 支持的更新包格式（严格遵循结构）</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered small">
+                        <thead class="table-light">
+                            <tr><th>类型</th><th>格式</th><th>结构要求</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Java 全量</td><td><code>pcms.war</code></td><td>标准 WAR 包</td></tr>
+                            <tr><td>Java 增量</td><td><code>pcms.zip</code></td><td>将 <code>WEB-INF</code>、<code>module</code> 等放入 <code>pcms/</code> 文件夹，压缩该文件夹为 <code>pcms.zip</code>（切勿嵌套）</td></tr>
+                            <tr><td>H5 全量</td><td><code>confApp.zip</code></td><td>与 Java 增量相同逻辑：将 H5 资源放入 <code>confApp/</code> 文件夹，压缩该文件夹为 <code>confApp.zip</code></td></tr>
+                            <tr><td>DCS 文件</td><td><code>pcms</code> （C++ 可执行文件）</td><td>直接替换原文件</td></tr>
+                            <tr><td>Java 日志全量</td><td><code>pcmsLog.war</code></td><td>标准 WAR 包</td></tr>
+                            <tr><td>Java 日志增量</td><td><code>pcmsLog.zip</code></td><td>与 Java 增量相同：文件夹内为 <code>pcmsLog/</code>，压缩为 <code>pcmsLog.zip</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-danger small mb-0"><i class="fas fa-exclamation-circle"></i> 特别注意：所有 ZIP 包必须在对应文件夹“那一层”压缩，禁止双层目录（例如 pcms/pcms/*）。</p>
+            </div>
+            <hr>
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="fas fa-database"></i> 数据库说明</h6>
+                <ul class="ms-3">
+                    <li><span class="badge bg-danger">暂不支持</span> 通过更新包执行 SQL 变更，请务必手动备份数据库并执行变更脚本。</li>
+                    <li>脚本内置备份命令使用绝对路径 <code>/usr/bin/mysqldump</code>，若 MySQL 未安装在默认路径，备份将失败，需手动处理或修改脚本。</li>
+                    <li>OceanBase 数据库使用 <code>mysqldump</code> 可能因租户内存/参数不兼容报错，后续优化，目前请手动备份。</li>
+                </ul>
+            </div>
+            <hr>
+            <div class="mb-4">
+                <h6 class="text-primary"><i class="fas fa-cogs"></i> 默认更新脚本逻辑</h6>
+                <ol class="ms-3">
+                    <li><strong>备份准备</strong>：在 <code>/opt/upbak</code> 创建以时间戳命名的备份目录。</li>
+                    <li><strong>读取配置</strong>：从 C++ 配置文件获取数据库连接信息。</li>
+                    <li><strong>数据库备份</strong>（失败则跳过，记录日志）。</li>
+                    <li><strong>Java 全量</strong>：停止服务 → 备份原 <code>pcms/</code> 及 <code>pcms.war</code> → 部署新包 → 还原 license、所有 <code>.properties</code>、会议室图片、轮播图等 → 清除缓存 → 重启。</li>
+                    <li><strong>Java 增量</strong>：停止服务 → 备份 <code>pcms/</code> → 解压 zip 覆盖 → 还原 license、配置文件、图片等 → 清除缓存 → 重启。</li>
+                    <li><strong>H5 更新</strong>：停止服务 → 备份 <code>confApp</code> → 解压 zip 到 webapps → 清除缓存 → 重启。</li>
+                    <li><strong>pcmsLog 全量/增量</strong>：同 Java 逻辑，但无 license/配置还原步骤。</li>
+                    <li><strong>DCS 更新</strong>：停止服务 → 备份原 <code>pcms</code> 文件 → 覆盖新文件并赋予执行权限 → 重启。</li>
+                    <li><strong>健康检查</strong>：通过检测端口是否监听判断服务状态。</li>
+                </ol>
+            </div>
+            <hr>
+            <div class="mb-3">
+                <h6 class="text-primary"><i class="fas fa-exclamation-triangle"></i> 常见问题与风险</h6>
+                <ul class="ms-3">
+                    <li><strong>配置文件被还原</strong>：Java 更新时会自动还原原有 <code>.properties</code> 文件，若新版本增加了配置项，还原后可能缺少新配置导致启动失败。需登录服务器手动补充。</li>
+                    <li><strong>数据库备份失败</strong>：如前述，非标准 MySQL 安装路径或 OceanBase 会导致备份中断，不影响更新但会失去自动备份。</li>
+                    <li><strong>增量包嵌套错误</strong>：若 zip 包内层还包含一层同名目录（如 <code>pcms/pcms/</code>），更新时会覆盖错误，务必按规范打包。</li>
+                </ul>
+            </div>
+            <div class="alert alert-light border small p-2 mb-0">
+                <i class="fas fa-lightbulb text-warning"></i> 建议：重要更新前先在测试环境验证更新包，并提前手动备份数据库及配置文件。
+            </div>
+        </div>
+        <div class="modal-footer">
+            <!-- 内联关闭逻辑 -->
+            <button type="button" class="btn-close" onclick="document.getElementById('noticeModal').style.display='none';document.body.style.overflow=''"></button>
+        </div>
+    </div>
+</div>
+<!-- ========= 弹窗结束 ========= -->
+
+<!-- 点击遮罩层关闭弹窗（最后兜底） -->
+<script>
+document.getElementById('noticeModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 原有全局函数（完全保留，一行不改）
+function showLoading(button) {
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+    button.disabled = true;
+    return originalHtml;
+}
+function restoreButton(button, originalHtml) {
+    button.innerHTML = originalHtml;
+    button.disabled = false;
+}
+function showAlert(message, type = 'success', duration = 3000) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    const container = document.querySelector('.container-fluid.py-4');
+    container.insertBefore(alertDiv, container.firstChild);
+    if (duration > 0) {
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.classList.remove('show');
+                setTimeout(() => alertDiv.remove(), 150);
+            }
+        }, duration);
+    }
+}
+function confirmAction(message, callback) {
+    if (confirm(message)) {
+        callback();
+    }
+}
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+</script>
+{% endblock %}

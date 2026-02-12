@@ -1,0 +1,409 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'project_list' %}">项目管理</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ project.name }}</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="card-title mb-0">
+                <i class="fas fa-project-diagram"></i> {{ project.name }}
+                <span class="badge bg-{% if project.status == 'active' %}success{% elif project.status == 'maintenance' %}warning{% else %}secondary{% endif %} ms-2">
+                    {{ project.get_status_display }}
+                </span>
+            </h4>
+            <p class="text-muted mb-0 mt-1">
+                <code>{{ project.code }}</code> • 创建于 {{ project.created_at|date:"Y-m-d" }}
+            </p>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <!-- 项目信息 -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h5><i class="fas fa-info-circle"></i> 项目信息</h5>
+                {% if project.description %}
+                <div class="alert alert-light">
+                    {{ project.description|linebreaks }}
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="40%">项目代号</th>
+                                <td><code>{{ project.code }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>状态</th>
+                                <td>
+                                    <span class="badge bg-{% if project.status == 'active' %}success{% elif project.status == 'maintenance' %}warning{% else %}secondary{% endif %}">
+                                        {{ project.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>创建人</th>
+                                <td>{{ project.created_by.username|default:"系统" }}</td>
+                            </tr>
+                            <tr>
+                                <th>创建时间</th>
+                                <td>{{ project.created_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="40%">C++安装路径</th>
+                                <td><code>{{ project.cpp_install_path }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Java安装路径</th>
+                                <td><code>{{ project.java_install_path }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>备份路径</th>
+                                <td><code>{{ project.backup_path }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>端口配置</th>
+                                <td>Java: {{ project.java_port }} • C++: {{ project.cpp_port }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-chart-pie"></i> 统计信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="display-4 text-primary">{{ vm_relations.count }}</div>
+                            <div class="text-muted">关联虚拟机</div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 虚拟机列表 -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-server"></i> 虚拟机列表</h5>
+                <span class="badge bg-info">{{ vm_relations.count }} 台</span>
+            </div>
+            
+            {% if vm_relations %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>虚拟机名称</th>
+                            <th>IP地址</th>
+                            <th>宿主机</th>
+                            <th>状态</th>
+                            <th>SSH配置</th>
+                            <th>最后检查</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for relation in vm_relations %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-server text-{% if relation.virtual_machine.status == 'running' %}success{% else %}secondary{% endif %}"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-2">
+                                        <strong>{{ relation.virtual_machine.name }}</strong>
+                                        {% if relation.custom_ip %}
+                                        <div class="text-muted small">覆盖IP</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <code>{{ relation.get_ip|default:"未设置" }}</code>
+                            </td>
+                            <td>{{ relation.virtual_machine.host_machine.name }}</td>
+                            <td>
+                                <span class="badge bg-{% if relation.virtual_machine.status == 'running' %}success{% elif relation.virtual_machine.status == 'stopped' %}warning{% else %}danger{% endif %}">
+                                    {{ relation.virtual_machine.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>{{ relation.ssh_username }}@{{ relation.ssh_port }}</small>
+                            </td>
+                            <td>
+                                {% if relation.virtual_machine.updated_at %}
+                                {{ relation.virtual_machine.updated_at|timesince }}前
+                                {% else %}
+                                <span class="text-muted">从未</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 该项目尚未关联任何虚拟机。
+                <a href="{% url 'project_edit' pk=project.pk %}" class="btn btn-sm btn-primary ms-3">
+                    <i class="fas fa-plus"></i> 添加虚拟机
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- 更新脚本 -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-code"></i> 更新脚本</h5>
+                <div>
+                    <a href="{% url 'script_edit' pk=project.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-edit"></i> 编辑脚本
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="view-script-btn">
+                        <i class="fas fa-eye"></i> 查看脚本
+                    </button>
+                </div>
+            </div>
+            
+            {% if script %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            版本: <span class="badge bg-info">{{ script.version }}</span>
+                            <span class="badge bg-{% if script.is_active %}success{% else %}secondary{% endif %} ms-2">
+                                {% if script.is_active %}启用{% else %}停用{% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <small class="text-muted">
+                                更新于: {{ script.updated_at|date:"Y-m-d H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body" id="script-content" style="display: none;">
+                    <pre class="script-content">{{ script.content }}</pre>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 该项目尚未配置更新脚本。
+                <a href="{% url 'script_edit' pk=project.pk %}" class="btn btn-sm btn-primary ms-3">
+                    <i class="fas fa-plus"></i> 创建脚本
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- 最近更新历史 -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="fas fa-history"></i> 最近更新历史</h5>
+                <a href="{% url 'history_list' %}?project={{ project.pk }}" class="btn btn-sm btn-outline-primary">
+                    查看全部
+                </a>
+            </div>
+            
+            {% if recent_history %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>任务ID</th>
+                            <th>包版本</th>
+                            <th>虚拟机</th>
+                            <th>状态</th>
+                            <th>健康检查</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in recent_history %}
+                        <tr>
+                            <td>{{ history.completed_at|date:"m-d H:i" }}</td>
+                            <td>
+                                <code>{{ history.task.task_id|truncatechars:8 }}</code>
+                            </td>
+                            <td>{{ history.package_version }}</td>
+                            <td>{{ history.project_vm.virtual_machine.name }}</td>
+                            <td>
+                                <span class="badge bg-{% if history.status == 'success' %}success{% else %}danger{% endif %}">
+                                    {{ history.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="health-check d-flex">
+                                    <span class="status {% if history.java_service_healthy %}healthy{% else %}unhealthy{% endif %}" 
+                                          title="Java服务"></span>
+                                    <span class="status {% if history.cpp_service_healthy %}healthy{% else %}unhealthy{% endif %}" 
+                                          title="C++服务"></span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 暂无更新历史记录。
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>警告：此操作不可恢复！</strong>
+                </div>
+                <p>确定要删除项目 <strong>"{{ project.name }}"</strong> 吗？</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    删除项目将同时删除：
+                </p>
+                <ul class="text-danger">
+                    <li>项目配置信息</li>
+                    <li>关联的虚拟机配置</li>
+                    <li>更新脚本</li>
+                    <li>更新历史记录</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form method="post" action="{% url 'project_delete' pk=project.pk %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> 确认删除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 显示/隐藏脚本内容
+    const viewScriptBtn = document.getElementById('view-script-btn');
+    const scriptContent = document.getElementById('script-content');
+    
+    if (viewScriptBtn && scriptContent) {
+        viewScriptBtn.addEventListener('click', function() {
+            if (scriptContent.style.display === 'none') {
+                scriptContent.style.display = 'block';
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> 隐藏脚本';
+            } else {
+                scriptContent.style.display = 'none';
+                this.innerHTML = '<i class="fas fa-eye"></i> 查看脚本';
+            }
+        });
+    }
+    
+    // 测试所有连接
+    const testConnectionsBtn = document.getElementById('test-all-connections');
+    if (testConnectionsBtn) {
+        testConnectionsBtn.addEventListener('click', function() {
+            const originalHtml = showLoading(this);
+            
+            fetch(`/api/project/{{ project.pk }}/test-connections/`)
+                .then(response => response.json())
+                .then(data => {
+                    restoreButton(this, originalHtml);
+                    
+                    if (data.success) {
+                        let message = `测试完成：${data.success_count}个成功，${data.fail_count}个失败\n\n`;
+                        data.results.forEach(result => {
+                            message += `${result.vm_name}: ${result.success ? '✓' : '✗'} ${result.message}\n`;
+                        });
+                        
+                        alert(message);
+                    } else {
+                        showAlert('测试失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    restoreButton(this, originalHtml);
+                    showAlert('请求失败: ' + error, 'danger');
+                });
+        });
+    }
+    
+    // 健康检查所有
+    const checkHealthBtn = document.getElementById('check-all-health');
+    if (checkHealthBtn) {
+        checkHealthBtn.addEventListener('click', function() {
+            const originalHtml = showLoading(this);
+            
+            fetch(`/api/project/{{ project.pk }}/health-check/`)
+                .then(response => response.json())
+                .then(data => {
+                    restoreButton(this, originalHtml);
+                    
+                    if (data.success) {
+                        let message = `健康检查完成：${data.healthy_count}个健康，${data.unhealthy_count}个异常\n\n`;
+                        data.results.forEach(result => {
+                            message += `${result.vm_name}:\n`;
+                            message += `  Java服务: ${result.java_healthy ? '✓' : '✗'}\n`;
+                            message += `  C++服务: ${result.cpp_healthy ? '✓' : '✗'}\n`;
+                        });
+                        
+                        alert(message);
+                    } else {
+                        showAlert('检查失败: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    restoreButton(this, originalHtml);
+                    showAlert('请求失败: ' + error, 'danger');
+                });
+        });
+    }
+    
+    // 自动刷新虚拟机状态
+    function refreshVmStatus() {
+        fetch(`/api/project/{{ project.pk }}/vm-status/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新状态显示
+                    console.log('虚拟机状态已更新');
+                }
+            });
+    }
+    
+    // 每30秒刷新一次状态
+    setInterval(refreshVmStatus, 30000);
+});
+</script>
+{% endblock %}

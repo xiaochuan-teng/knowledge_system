@@ -6,6 +6,7 @@ from django.utils.html import format_html
 from .models import HostMachine, VirtualMachine
 from django.contrib import admin
 from .models import Asset, AssetCredential, AssetPhoto
+from .models import Project, DeploymentServer, DeploymentPackage, DeploymentTask, DeploymentScript, DeploymentHistory
 
 
 # ============ 用户管理 ============
@@ -139,3 +140,39 @@ class AssetCredentialAdmin(admin.ModelAdmin):
 @admin.register(AssetPhoto)
 class AssetPhotoAdmin(admin.ModelAdmin):
     list_display = ['asset', 'description', 'uploaded_at']
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ['name', 'code', 'status', 'created_by', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['name', 'code', 'description']
+
+@admin.register(DeploymentServer)
+class DeploymentServerAdmin(admin.ModelAdmin):
+    list_display = ['name', 'ip_address', 'project', 'os_type', 'is_online', 'last_check_time']
+    list_filter = ['os_type', 'is_online', 'project']
+    search_fields = ['name', 'ip_address', 'hostname']
+
+@admin.register(DeploymentPackage)
+class DeploymentPackageAdmin(admin.ModelAdmin):
+    list_display = ['name', 'package_type', 'version', 'file_size', 'uploaded_by', 'uploaded_at']
+    list_filter = ['package_type', 'uploaded_at']
+    search_fields = ['name', 'version', 'description']
+
+@admin.register(DeploymentTask)
+class DeploymentTaskAdmin(admin.ModelAdmin):
+    list_display = ['task_id', 'name', 'project', 'status', 'progress', 'created_by', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['task_id', 'name', 'description']
+
+@admin.register(DeploymentScript)
+class DeploymentScriptAdmin(admin.ModelAdmin):
+    list_display = ['project', 'version', 'is_active', 'updated_at']
+    list_filter = ['is_active']
+    search_fields = ['project__name']
+
+@admin.register(DeploymentHistory)
+class DeploymentHistoryAdmin(admin.ModelAdmin):
+    list_display = ['task', 'project_vm', 'status', 'started_at', 'duration']
+    list_filter = ['status', 'started_at']
+    search_fields = ['task__name', 'project_vm__virtual_machine__name']

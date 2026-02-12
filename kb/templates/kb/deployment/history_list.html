@@ -1,0 +1,241 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">仪表板</a></li>
+<li class="breadcrumb-item active" aria-current="page">更新历史</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">
+            <i class="fas fa-history"></i> 更新历史记录
+        </h4>
+        <a href="{% url 'task_list' %}" class="btn btn-sm btn-primary">
+            <i class="fas fa-tasks"></i> 查看任务
+        </a>
+    </div>
+    
+    <div class="card-body">
+        <!-- 搜索和筛选表单 -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" name="q" class="form-control" 
+                                   placeholder="搜索项目或虚拟机名称..." 
+                                   value="{{ search_query }}">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <input type="date" name="date" class="form-control" 
+                               value="{{ date_filter }}">
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                             筛选
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 历史记录列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>完成时间</th>
+                        <th>任务</th>
+                        <th>项目</th>
+                        <th>虚拟机</th>
+                        <th>状态</th>
+                        <th>健康检查</th>
+                        <th>用时</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for history in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="small">{{ history.completed_at|date:"Y-m-d" }}</div>
+                            <div class="text-muted smaller">{{ history.completed_at|date:"H:i:s" }}</div>
+                        </td>
+                        <td>
+                            <div>
+                                <a href="{% url 'task_detail' pk=history.task.pk %}" 
+                                   class="text-decoration-none">
+                                    {{ history.task.name|truncatechars:20 }}
+                                </a>
+                                <div class="text-muted small">
+                                    <code>{{ history.task.task_id|truncatechars:10 }}</code>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if history.task.project %}
+                            <a href="{% url 'project_detail' pk=history.task.project.pk %}" 
+                               class="text-decoration-none">
+                                {{ history.task.project.name|truncatechars:15 }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ history.project_vm.virtual_machine.name|truncatechars:15 }}</strong>
+                                <div class="text-muted small">
+                                    <code>{{ history.project_vm.get_ip|truncatechars:15 }}</code>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if history.status == 'success' %}success{% elif history.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                {% if history.status == 'success' %}
+                                    <i class="fas fa-check-circle"></i> 成功
+                                {% elif history.status == 'failed' %}
+                                    <i class="fas fa-times-circle"></i> 失败
+                                {% else %}
+                                    {{ history.status }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex">
+                                <div class="me-2" title="Java服务">
+                                    {% if history.java_service_healthy %}
+                                    <span class="badge bg-success">Java</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Java</span>
+                                    {% endif %}
+                                </div>
+                                <div title="C++服务">
+                                    {% if history.cpp_service_healthy %}
+                                    <span class="badge bg-success">C++</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">C++</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-nowrap">
+                                {% if history.duration %}
+                                <strong>{{ history.duration }}</strong> 秒
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="py-4">
+                                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                                <p class="text-muted mb-3">暂无更新历史记录</p>
+                                {% if not search_query and not date_filter and not project_id %}
+                                <a href="{% url 'package_upload' %}" class="btn btn-primary">
+                                    <i class="fas fa-upload"></i> 创建第一个更新任务
+                                </a>
+                                {% else %}
+                                <a href="{% url 'history_list' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> 清除筛选条件
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 分页 -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if project_id %}&project={{ project_id }}{% endif %}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <div class="text-center text-muted mt-2">
+                显示第 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }} 条记录
+            </div>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 清空筛选按钮
+    const clearFilters = document.getElementById('clear-filters');
+    if (clearFilters) {
+        clearFilters.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = "{% url 'history_list' %}";
+        });
+    }
+});
+</script>
+
+<style>
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom-width: 2px;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+.text-nowrap {
+    white-space: nowrap;
+}
+
+.smaller {
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,652 @@
+{% extends 'kb/deployment/base.html' %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'project_list' %}">项目管理</a></li>
+<li class="breadcrumb-item"><a href="{% url 'project_detail' pk=project.pk %}">{{ project.name }}</a></li>
+<li class="breadcrumb-item active" aria-current="page">编辑更新脚本</li>
+{% endblock %}
+
+{% block deployment_content %}
+<div class="card deployment-card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">
+            <i class="fas fa-code"></i> {{ title }}
+        </h4>
+    </div>
+    
+    <div class="card-body">
+        <!-- 项目信息摘要 -->
+        <div class="alert alert-info mb-4">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>项目名称:</strong> {{ project.name }}
+                </div>
+                <div class="col-md-4">
+                    <strong>项目代号:</strong> <code>{{ project.code }}</code>
+                </div>
+                <div class="col-md-4">
+                    <strong>当前版本:</strong> 
+                    <span class="badge bg-info">{{ form.instance.version|default:"1.0" }}</span>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-3">
+                    <strong>C++路径:</strong> <code>{{ project.cpp_install_path }}</code>
+                </div>
+                <div class="col-md-3">
+                    <strong>Java路径:</strong> <code>{{ project.java_install_path }}</code>
+                </div>
+                <div class="col-md-3">
+                    <strong>备份路径:</strong> <code>{{ project.backup_path }}</code>
+                </div>
+                <div class="col-md-3">
+                    <strong>端口:</strong> Java:{{ project.java_port }} C++:{{ project.cpp_port }}
+                </div>
+            </div>
+        </div>
+        
+        <form method="post" id="script-form">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- 脚本内容编辑 -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <label for="{{ form.content.id_for_label }}" class="form-label">
+                        <strong>脚本内容</strong>
+                    </label>
+                    <div>
+                        <button type="button" id="reset-script" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-redo"></i> 重置为默认脚本
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" id="format-script">
+                            <i class="fas fa-align-left"></i> 格式化
+                        </button>
+                    </div>
+                </div>
+                
+                
+                <!-- 脚本编辑器 -->
+                <div class="position-relative script-editor-container" style="height: 500px;">
+                    <!-- 行号显示 -->
+                    <div id="line-numbers" class="position-absolute top-0 start-0 bg-light" 
+                         style="width: 40px; padding: 0.75rem 8px 0.75rem 0; text-align: right; 
+                                border-right: 1px solid #dee2e6; color: #6c757d; user-select: none;
+                                font-family: 'Consolas', monospace; font-size: 12px; line-height: 18px;
+                                overflow: hidden; z-index: 1;"></div>
+                    
+                    <!-- 文本区域 -->
+                    {{ form.content }}
+                </div>
+                
+                {% if form.content.errors %}
+                <div class="text-danger mt-2">{{ form.content.errors }}</div>
+                {% endif %}
+                
+                <div class="form-text mt-2">
+                    提示：脚本中的以下变量会自动替换为项目配置值：
+                    <code>UPBAKDIR</code>, <code>DCSDIR</code>, <code>TOMCATDIR</code>
+                </div>
+            </div>
+            
+            <!-- 脚本验证 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-check-circle"></i> 脚本验证
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button type="button" id="validate-script" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-check"></i> 验证语法
+                            </button>
+                        </div>
+                        <!--<div class="col-md-6">
+                            <button type="button" id="test-script" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-vial"></i> 测试执行
+                            </button>
+                        </div>-->
+                    </div>
+                    <div id="validation-result" class="mt-3" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存脚本
+                </button>
+                <a href="{% url 'project_detail' pk=project.pk %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+                <!--
+		{% if form.instance.is_active %}
+                <button type="button" id="toggle-script" class="btn btn-warning" data-active="true">
+                    <i class="fas fa-toggle-on"></i> 停用脚本
+                </button>
+                {% else %}
+                <button type="button" id="toggle-script" class="btn btn-success" data-active="false">
+                    <i class="fas fa-toggle-off"></i> 启用脚本
+                </button>
+                {% endif %}-->
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 预览模态框 -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">脚本预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="script-preview" class="script-content" style="height: 500px; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const scriptTextarea = document.getElementById('{{ form.content.id_for_label }}');
+    const lineNumbers = document.getElementById('line-numbers');
+    const resetBtn = document.getElementById('reset-script');
+    const formatBtn = document.getElementById('format-script');
+    const validateBtn = document.getElementById('validate-script');
+    const testBtn = document.getElementById('test-script');
+    const toggleBtn = document.getElementById('toggle-script');
+    const validationResult = document.getElementById('validation-result');
+    const scriptTools = document.querySelectorAll('.script-tool');
+    
+    // 初始化文本区域
+    if (scriptTextarea) {
+        // 设置样式
+        scriptTextarea.style.fontFamily = "'Consolas', 'Monaco', 'Courier New', monospace";
+        scriptTextarea.style.fontSize = '12px';
+        scriptTextarea.style.lineHeight = '18px';
+        scriptTextarea.style.whiteSpace = 'pre';
+        scriptTextarea.style.tabSize = '4';
+        scriptTextarea.style.height = '500px';
+        scriptTextarea.style.paddingLeft = '50px'; // 为行号留出空间
+        scriptTextarea.style.resize = 'vertical';
+        scriptTextarea.style.overflowY = 'auto';
+        scriptTextarea.style.overflowX = 'auto';
+        scriptTextarea.style.position = 'relative';
+        scriptTextarea.style.zIndex = '2';
+        scriptTextarea.style.backgroundColor = 'transparent';
+        scriptTextarea.style.width = '100%';
+        scriptTextarea.style.border = '1px solid #ced4da';
+        scriptTextarea.style.borderRadius = '0.375rem';
+        
+        // 初始化行号
+        updateLineNumbers();
+        
+        // 监听输入更新行号
+        scriptTextarea.addEventListener('input', updateLineNumbers);
+        scriptTextarea.addEventListener('scroll', syncScroll);
+        scriptTextarea.addEventListener('keydown', function() {
+            setTimeout(updateLineNumbers, 10);
+        });
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', function() {
+            setTimeout(updateLineNumbers, 100);
+        });
+        
+        // 初始化时同步滚动
+        setTimeout(syncScroll, 100);
+    }
+    
+    // 更新行号
+    function updateLineNumbers() {
+        if (!scriptTextarea || !lineNumbers) return;
+        
+        // 获取文本内容行数
+        const lines = scriptTextarea.value.split('\n');
+        const lineCount = Math.max(lines.length, 1); // 至少一行
+        
+        // 生成行号HTML
+        let lineNumbersHTML = '';
+        for (let i = 1; i <= lineCount; i++) {
+            lineNumbersHTML += `<div style="height: 18px; line-height: 18px;">${i}</div>`;
+        }
+        
+        lineNumbers.innerHTML = lineNumbersHTML;
+        
+        // 设置行号容器高度与文本区域内容高度一致
+        lineNumbers.style.height = scriptTextarea.scrollHeight + 'px';
+        
+        // 同步滚动
+        syncScroll();
+    }
+    
+    // 同步滚动
+    function syncScroll() {
+        if (!scriptTextarea || !lineNumbers) return;
+        
+        // 将行号容器向上平移，与文本区域滚动位置同步
+        lineNumbers.style.transform = `translateY(-${scriptTextarea.scrollTop}px)`;
+        
+        // 可选：高亮当前可见行
+        highlightVisibleLines();
+    }
+    
+    // 高亮当前可见行（可选功能）
+    function highlightVisibleLines() {
+        const lineNumberDivs = lineNumbers.querySelectorAll('div');
+        if (lineNumberDivs.length === 0) return;
+        
+        const lineHeight = 18;
+        const startLine = Math.floor(scriptTextarea.scrollTop / lineHeight);
+        const visibleLines = Math.ceil(scriptTextarea.clientHeight / lineHeight);
+        const endLine = startLine + visibleLines;
+        
+        // 移除之前的高亮
+        lineNumberDivs.forEach(div => {
+            div.style.backgroundColor = '';
+        });
+        
+        // 高亮当前可见行
+        for (let i = startLine; i <= Math.min(endLine, lineNumberDivs.length - 1); i++) {
+            if (lineNumberDivs[i]) {
+                lineNumberDivs[i].style.backgroundColor = 'rgba(0, 123, 255, 0.05)';
+            }
+        }
+    }
+    
+    // 重置为默认脚本
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (confirm('确定要重置为默认脚本吗？所有自定义修改都将丢失。')) {
+                fetch(`/api/project/{{ project.pk }}/default-script/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            scriptTextarea.value = data.script_content;
+                            updateLineNumbers();
+                            showAlert('脚本已重置为默认版本', 'success');
+                        } else {
+                            showAlert('重置失败: ' + data.message, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        showAlert('请求失败: ' + error, 'danger');
+                    });
+            }
+        });
+    }
+    
+    // 格式化脚本
+    if (formatBtn) {
+        formatBtn.addEventListener('click', function() {
+            const code = scriptTextarea.value;
+            
+            // 基本的格式化逻辑
+            let formatted = code
+                .replace(/\t/g, '    ')  // 制表符转空格
+                .replace(/\n{3,}/g, '\n\n')  // 多个空行合并为两个
+                .replace(/^\s+$/gm, '');  // 删除空行中的空格
+            
+            // 在特定语句后添加空行
+            const statements = ['then', 'do', 'fi', 'done', 'else'];
+            statements.forEach(stmt => {
+                const regex = new RegExp(`\\b${stmt}\\b\\s*\\n(?!\\s*\\n)`, 'g');
+                formatted = formatted.replace(regex, `${stmt}\n\n`);
+            });
+            
+            scriptTextarea.value = formatted;
+            updateLineNumbers();
+            showAlert('脚本已格式化', 'success');
+        });
+    }
+    
+    // 脚本工具按钮
+    scriptTools.forEach(tool => {
+        tool.addEventListener('click', function() {
+            const insertText = this.getAttribute('data-insert');
+            if (insertText && scriptTextarea) {
+                const start = scriptTextarea.selectionStart;
+                const end = scriptTextarea.selectionEnd;
+                const text = scriptTextarea.value;
+                
+                scriptTextarea.value = text.substring(0, start) + insertText + text.substring(end);
+                scriptTextarea.focus();
+                scriptTextarea.setSelectionRange(start + insertText.length, start + insertText.length);
+                updateLineNumbers();
+            }
+        });
+    });
+    
+    // 验证脚本语法
+    if (validateBtn) {
+        validateBtn.addEventListener('click', function() {
+            const originalHtml = showLoading(this);
+            const scriptContent = scriptTextarea.value;
+            
+            fetch(`/api/project/{{ project.pk }}/validate-script/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ script: scriptContent })
+            })
+            .then(response => response.json())
+            .then(data => {
+                restoreButton(this, originalHtml);
+                
+                validationResult.style.display = 'block';
+                
+                if (data.success) {
+                    validationResult.className = 'alert alert-success';
+                    validationResult.innerHTML = `
+                        <h6><i class="fas fa-check-circle"></i> 语法验证通过</h6>
+                        <p>${data.message || '脚本语法正确'}</p>
+                    `;
+                } else {
+                    validationResult.className = 'alert alert-danger';
+                    validationResult.innerHTML = `
+                        <h6><i class="fas fa-exclamation-triangle"></i> 语法验证失败</h6>
+                        <p>${data.message || '脚本语法有错误'}</p>
+                        ${data.error ? `<pre class="mt-2 mb-0">${data.error}</pre>` : ''}
+                    `;
+                }
+            })
+            .catch(error => {
+                restoreButton(this, originalHtml);
+                showAlert('验证请求失败: ' + error, 'danger');
+            });
+        });
+    }
+    
+    // 测试脚本执行
+    if (testBtn) {
+        testBtn.addEventListener('click', function() {
+            const scriptContent = scriptTextarea.value;
+            
+            // 选择测试虚拟机
+            const vmOptions = [];
+            {% for relation in project.projectvmrelation_set.all %}
+            vmOptions.push({
+                id: {{ relation.virtual_machine.id }},
+                name: '{{ relation.virtual_machine.name }}',
+                ip: '{{ relation.get_ip }}'
+            });
+            {% endfor %}
+            
+            if (vmOptions.length === 0) {
+                showAlert('项目没有关联虚拟机，无法测试', 'warning');
+                return;
+            }
+            
+            // 创建测试对话框
+            const modalHTML = `
+                <div class="modal fade" id="testScriptModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">测试脚本执行</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">选择测试虚拟机</label>
+                                    <select id="test-vm-select" class="form-select">
+                                        ${vmOptions.map(vm => `<option value="${vm.id}">${vm.name} (${vm.ip})</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="dry-run" checked>
+                                        <label class="form-check-label" for="dry-run">
+                                            干运行模式（只检查语法，不实际执行）
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="test-result" style="display: none;"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" class="btn btn-primary" id="start-test">开始测试</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加模态框到页面
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            const modal = new bootstrap.Modal(document.getElementById('testScriptModal'));
+            modal.show();
+            
+            // 开始测试按钮
+            document.getElementById('testScriptModal').addEventListener('shown.bs.modal', function() {
+                const startBtn = document.getElementById('start-test');
+                const testResult = document.getElementById('test-result');
+                
+                startBtn.addEventListener('click', function() {
+                    const vmId = document.getElementById('test-vm-select').value;
+                    const dryRun = document.getElementById('dry-run').checked;
+                    const originalHtml = showLoading(this);
+                    
+                    fetch(`/api/project/{{ project.pk }}/test-script/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}',
+                        },
+                        body: JSON.stringify({
+                            vm_id: vmId,
+                            script: scriptContent,
+                            dry_run: dryRun
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        restoreButton(this, originalHtml);
+                        
+                        testResult.style.display = 'block';
+                        
+                        if (data.success) {
+                            testResult.className = 'alert alert-success';
+                            testResult.innerHTML = `
+                                <h6><i class="fas fa-check-circle"></i> 测试成功</h6>
+                                <p>${data.message || '脚本测试通过'}</p>
+                                ${data.output ? `<pre class="mt-2 mb-0">${data.output}</pre>` : ''}
+                            `;
+                        } else {
+                            testResult.className = 'alert alert-danger';
+                            testResult.innerHTML = `
+                                <h6><i class="fas fa-exclamation-triangle"></i> 测试失败</h6>
+                                <p>${data.message || '脚本测试失败'}</p>
+                                ${data.error ? `<pre class="mt-2 mb-0">${data.error}</pre>` : ''}
+                            `;
+                        }
+                    })
+                    .catch(error => {
+                        restoreButton(this, originalHtml);
+                        testResult.style.display = 'block';
+                        testResult.className = 'alert alert-danger';
+                        testResult.innerHTML = `<p>测试请求失败: ${error}</p>`;
+                    });
+                });
+            });
+            
+            // 模态框隐藏时清理
+            document.getElementById('testScriptModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        });
+    }
+    
+    // 切换脚本状态
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            const isActive = this.getAttribute('data-active') === 'true';
+            const newState = !isActive;
+            const action = newState ? '启用' : '停用';
+            
+            if (confirm(`确定要${action}此更新脚本吗？`)) {
+                fetch(`/api/project/{{ project.pk }}/toggle-script/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: JSON.stringify({ active: newState })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.setAttribute('data-active', newState.toString());
+                        if (newState) {
+                            this.className = 'btn btn-warning';
+                            this.innerHTML = '<i class="fas fa-toggle-on"></i> 停用脚本';
+                        } else {
+                            this.className = 'btn btn-success';
+                            this.innerHTML = '<i class="fas fa-toggle-off"></i> 启用脚本';
+                        }
+                        showAlert(`脚本已${action}`, 'success');
+                    } else {
+                        showAlert(`${action}失败: ${data.message}`, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showAlert(`请求失败: ${error}`, 'danger');
+                });
+            }
+        });
+    }
+    
+    // 表单提交验证
+    const scriptForm = document.getElementById('script-form');
+    if (scriptForm) {
+        scriptForm.addEventListener('submit', function(e) {
+            const scriptContent = scriptTextarea.value.trim();
+            
+            if (!scriptContent) {
+                e.preventDefault();
+                showAlert('脚本内容不能为空', 'danger');
+                return false;
+            }
+            
+            if (!scriptContent.startsWith('#!/bin/bash')) {
+                if (!confirm('脚本没有以 #!/bin/bash 开头，确认要继续吗？')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            // 检查是否有明显的危险命令
+            const dangerousCommands = ['rm -rf /', 'dd if=', ':(){ :|:& };:'];
+            let foundDangerous = false;
+            let dangerousCmd = '';
+            
+            dangerousCommands.forEach(cmd => {
+                if (scriptContent.includes(cmd)) {
+                    foundDangerous = true;
+                    dangerousCmd = cmd;
+                }
+            });
+            
+            if (foundDangerous) {
+                e.preventDefault();
+                showAlert(`检测到危险命令: ${dangerousCmd}，请检查脚本内容`, 'danger');
+                return false;
+            }
+            
+            return true;
+        });
+    }
+    
+    // 辅助函数：显示消息
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 3000);
+    }
+    
+    // 辅助函数：显示加载状态
+    function showLoading(button) {
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+        button.disabled = true;
+        return originalHtml;
+    }
+    
+    // 辅助函数：恢复按钮状态
+    function restoreButton(button, originalHtml) {
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    }
+});
+</script>
+
+<style>
+/* 脚本编辑器容器 */
+.script-editor-container {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    background-color: #f8f9fa;
+    overflow: hidden; /* 确保容器内内容被裁剪 */
+}
+
+/* 行号容器 */
+#line-numbers {
+    pointer-events: none; /* 防止行号干扰文本选择 */
+    transition: transform 0.1s ease; /* 平滑滚动效果 */
+}
+
+/* 文本区域 */
+#{{ form.content.id_for_label }} {
+    background-color: transparent;
+    border: none;
+    outline: none;
+}
+
+/* 脚本预览样式 */
+.script-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+.script-tool {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
