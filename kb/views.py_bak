@@ -475,7 +475,7 @@ def get_vm_power_status(request, pk):
         if status_info['success']:
             # 更新数据库中的状态
             vm.status = status_info['status']
-            vm.updated_at = datetime.now()
+            vm.updated_at = timezone.now()
             
             # 如果从 VMware 获取到 IP 地址，也更新
             if status_info.get('ip_address'):
@@ -497,7 +497,7 @@ def get_vm_power_status(request, pk):
         else:
             # VMware 获取失败，设置为故障状态
             vm.status = 'fault'
-            vm.updated_at = datetime.now()
+            vm.updated_at = timezone.now()
             vm.save()
             
             return JsonResponse({
@@ -660,7 +660,7 @@ def get_vmware_vm_status(host, vm_name):
         local_status = status_mapping.get(str(power_state), 'fault')
         
         # 更新宿主机最后检查时间
-        host.last_check_time = datetime.now()
+        host.last_check_time = timezone.now()
         host.save()
         
         Disconnect(si)
@@ -815,7 +815,7 @@ def execute_vm_power_operation(vm, action):
                         result = {'success': False, 'message': f'重启失败: {e2}'}
         
         # 更新宿主机最后检查时间
-        host.last_check_time = datetime.now()
+        host.last_check_time = timezone.now()
         host.save()
         
         Disconnect(si)
@@ -1525,7 +1525,7 @@ def deployment_server_test_connection(request, pk):
         
         # 更新服务器状态
         server.is_online = True
-        server.last_check_time = datetime.now()
+        server.last_check_time = timezone.now()
         server.save()
         
         return JsonResponse({
@@ -1537,7 +1537,7 @@ def deployment_server_test_connection(request, pk):
         
     except Exception as e:
         server.is_online = False
-        server.last_check_time = datetime.now()
+        server.last_check_time = timezone.now()
         server.save()
         
         return JsonResponse({
@@ -1566,7 +1566,7 @@ def deployment_task_start(request, pk):
     thread.start()
     
     task.status = 'deploying'
-    task.started_at = datetime.now()
+    task.started_at = timezone.now()
     task.save()
     
     return JsonResponse({
@@ -1621,15 +1621,15 @@ def execute_deployment_task(task_id):
         
         # 检查任务是否已被取消
         if task.status == 'cancelled':
-            task.log_content = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
-            task.completed_at = datetime.now()
+            task.log_content = f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
+            task.completed_at = timezone.now()
             task.save()
             return
         
         # 设置任务状态为上传中
         task.status = 'uploading'
-        task.started_at = datetime.now()
-        task.log_content = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行部署任务...\n项目: {task.project.name}\n包: {task.package.name}\n版本: {task.package.version}\n"
+        task.started_at = timezone.now()
+        task.log_content = f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行部署任务...\n项目: {task.project.name}\n包: {task.package.name}\n版本: {task.package.version}\n"
         task.save()
         
         # 获取项目、包和虚拟机关系
@@ -1639,9 +1639,9 @@ def execute_deployment_task(task_id):
         
         # 检查是否有虚拟机
         if not vm_relations.exists():
-            task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 错误: 项目中没有配置虚拟机\n"
+            task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 错误: 项目中没有配置虚拟机\n"
             task.status = 'failed'
-            task.completed_at = datetime.now()
+            task.completed_at = timezone.now()
             task.save()
             return
         
@@ -1649,12 +1649,12 @@ def execute_deployment_task(task_id):
         try:
             script = project.deployment_script
             if not script.is_active:
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 警告: 部署脚本未启用，使用默认脚本\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 警告: 部署脚本未启用，使用默认脚本\n"
                 script_content = get_default_deployment_script(project)
             else:
                 script_content = script.content
         except DeploymentScript.DoesNotExist:
-            task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用默认部署脚本\n"
+            task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 使用默认部署脚本\n"
             script_content = get_default_deployment_script(project)
         
         total_vms = vm_relations.count()
@@ -1663,7 +1663,7 @@ def execute_deployment_task(task_id):
         skipped_count = 0
         
         # 开始逐个虚拟机部署
-        task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始部署 {total_vms} 个虚拟机...\n"
+        task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始部署 {total_vms} 个虚拟机...\n"
         task.save()
         
         for i, vm_relation in enumerate(vm_relations):
@@ -1673,8 +1673,8 @@ def execute_deployment_task(task_id):
             # 检查任务是否已被取消
             task.refresh_from_db()
             if task.status == 'cancelled':
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
-                task.completed_at = datetime.now()
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
+                task.completed_at = timezone.now()
                 task.save()
                 return
             
@@ -1682,51 +1682,51 @@ def execute_deployment_task(task_id):
             task.progress = int((i / total_vms) * 100)
             task.save()
             
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] === 开始部署虚拟机: {vm.name} ({target_ip}) ===\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] === 开始部署虚拟机: {vm.name} ({target_ip}) ===\n"
             task.save()
             
             try:
                 # 检查虚拟机状态
                 if vm.status != 'running':
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 警告: 虚拟机 {vm.name} 状态为 {vm.get_status_display()}，跳过部署\n"
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 警告: 虚拟机 {vm.name} 状态为 {vm.get_status_display()}，跳过部署\n"
                     record_deployment_history(task, vm_relation, 'skipped', 
                                             f"虚拟机状态为 {vm.get_status_display()}，跳过部署")
                     skipped_count += 1
                     continue
                 
                 # 阶段1: 上传文件到目标服务器
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始上传文件...\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始上传文件...\n"
                 task.save()
                 
                 upload_result = upload_file_to_server(vm_relation, package)
                 
                 if not upload_result['success']:
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 文件上传失败: {upload_result['error']}\n"
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 文件上传失败: {upload_result['error']}\n"
                     task.save()
                     record_deployment_history(task, vm_relation, 'failed', 
                                             f"文件上传失败: {upload_result.get('error', '未知错误')}")
                     fail_count += 1
                     continue
                 
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 文件上传成功，路径: {upload_result.get('remote_path', '未知')}\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 文件上传成功，路径: {upload_result.get('remote_path', '未知')}\n"
                 task.save()
                 
                 # 检查任务是否已被取消
                 task.refresh_from_db()
                 if task.status == 'cancelled':
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
-                    task.completed_at = datetime.now()
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
+                    task.completed_at = timezone.now()
                     task.save()
                     return
                 
                 # 阶段2: 执行部署脚本
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行部署脚本...\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始执行部署脚本...\n"
                 task.save()
                 
                 deploy_result = execute_deployment_script(vm_relation, script_content)
                 
                 if not deploy_result['success']:
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本执行失败: {deploy_result.get('error', '未知错误')}\n"
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本执行失败: {deploy_result.get('error', '未知错误')}\n"
                     if deploy_result.get('output'):
                         task.log_content += f"输出: {deploy_result['output']}\n"
                     task.save()
@@ -1735,7 +1735,7 @@ def execute_deployment_task(task_id):
                     fail_count += 1
                     continue
                 
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本执行成功\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 脚本执行成功\n"
                 if deploy_result.get('output'):
                     task.log_content += f"输出摘要: {deploy_result['output'][-500:] if len(deploy_result['output']) > 500 else deploy_result['output']}\n"
                 task.save()
@@ -1743,25 +1743,25 @@ def execute_deployment_task(task_id):
                 # 检查任务是否已被取消
                 task.refresh_from_db()
                 if task.status == 'cancelled':
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
-                    task.completed_at = datetime.now()
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已被取消，停止执行\n"
+                    task.completed_at = timezone.now()
                     task.save()
                     return
                 
                 # 等待服务启动
                 wait_time = project.health_check_timeout or 30
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待 {wait_time} 秒让服务启动...\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 等待 {wait_time} 秒让服务启动...\n"
                 task.save()
                 time.sleep(wait_time)
                 
                 # 阶段3: 执行健康检查
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始健康检查...\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始健康检查...\n"
                 task.save()
                 
                 health_result = perform_health_check(vm_relation, project)
                 
                 if health_result['success']:
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 健康检查通过！\n"
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 健康检查通过！\n"
                     task.save()
                     record_deployment_history(task, vm_relation, 'success',
                                             "部署成功，服务正常运行",
@@ -1769,7 +1769,7 @@ def execute_deployment_task(task_id):
                                             cpp_healthy=health_result.get('cpp_healthy', False))
                     success_count += 1
                 else:
-                    task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 健康检查失败: {health_result['message']}\n"
+                    task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 健康检查失败: {health_result['message']}\n"
                     task.save()
                     record_deployment_history(task, vm_relation, 'failed',
                                             f"健康检查失败: {health_result['message']}")
@@ -1777,7 +1777,7 @@ def execute_deployment_task(task_id):
                     
             except Exception as e:
                 error_msg = traceback.format_exc()
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 部署过程异常: {str(e)}\n详细错误: {error_msg[-1000:] if len(error_msg) > 1000 else error_msg}\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 部署过程异常: {str(e)}\n详细错误: {error_msg[-1000:] if len(error_msg) > 1000 else error_msg}\n"
                 task.save()
                 record_deployment_history(task, vm_relation, 'failed', f"部署异常: {str(e)}")
                 fail_count += 1
@@ -1789,28 +1789,28 @@ def execute_deployment_task(task_id):
         # 更新任务状态
         if fail_count == 0 and skipped_count == 0:
             task.status = 'success'
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] === 所有虚拟机部署成功！ ===\n成功: {success_count}\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] === 所有虚拟机部署成功！ ===\n成功: {success_count}\n"
         elif success_count > 0 and fail_count > 0:
             task.status = 'partial'
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] === 部署完成，部分成功 ===\n成功: {success_count}, 失败: {fail_count}, 跳过: {skipped_count}\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] === 部署完成，部分成功 ===\n成功: {success_count}, 失败: {fail_count}, 跳过: {skipped_count}\n"
         elif success_count == 0 and fail_count > 0:
             task.status = 'failed'
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] === 部署失败 ===\n成功: {success_count}, 失败: {fail_count}, 跳过: {skipped_count}\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] === 部署失败 ===\n成功: {success_count}, 失败: {fail_count}, 跳过: {skipped_count}\n"
         else:
             task.status = 'failed'
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] === 部署异常 ===\n成功: {success_count}, 失败: {fail_count}, 跳过: {skipped_count}\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] === 部署异常 ===\n成功: {success_count}, 失败: {fail_count}, 跳过: {skipped_count}\n"
         
-        task.completed_at = datetime.now()
+        task.completed_at = timezone.now()
         task.save()
         
         # 清理临时文件
         try:
             if os.path.exists(package.file_path):
                 os.remove(package.file_path)
-                task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 已清理临时文件: {package.file_path}\n"
+                task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 已清理临时文件: {package.file_path}\n"
                 task.save()
         except Exception as e:
-            task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 清理临时文件失败: {str(e)}\n"
+            task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 清理临时文件失败: {str(e)}\n"
             task.save()
         
     except DeploymentTask.DoesNotExist:
@@ -1819,9 +1819,9 @@ def execute_deployment_task(task_id):
         error_msg = traceback.format_exc()
         try:
             task = DeploymentTask.objects.get(id=task_id)
-            task.log_content += f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务执行异常: {str(e)}\n详细错误: {error_msg[-1000:] if len(error_msg) > 1000 else error_msg}\n"
+            task.log_content += f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务执行异常: {str(e)}\n详细错误: {error_msg[-1000:] if len(error_msg) > 1000 else error_msg}\n"
             task.status = 'failed'
-            task.completed_at = datetime.now()
+            task.completed_at = timezone.now()
             task.save()
         except:
             logger.error(f"任务异常且无法更新状态: {error_msg}")
@@ -1969,7 +1969,7 @@ def deployment_dashboard(request):
     from .models import Project, DeploymentPackage, DeploymentTask, VirtualMachine
     from django.utils import timezone
     
-    today = datetime.now().date()
+    today = timezone.now().date()
     
     # 统计信息
     active_projects_count = Project.objects.filter(status='active').count()
@@ -2600,7 +2600,7 @@ def execute_deployment_task(task_id):
     try:
         task = DeploymentTask.objects.get(id=task_id)
         task.status = 'uploading'
-        task.started_at = datetime.now()
+        task.started_at = timezone.now()
         task.log_content = f"开始执行部署任务...\n项目: {task.project.name}\n包: {task.package.name}\n"
         task.save()
         
@@ -2699,7 +2699,7 @@ def execute_deployment_task(task_id):
             task.status = 'failed' if success_count == 0 else 'partial'
             task.log_content += f"\n=== 部署完成，成功: {success_count}, 失败: {fail_count} ===\n"
         
-        task.completed_at = datetime.now()
+        task.completed_at = timezone.now()
         task.save()
         
         # 清理临时文件
@@ -2714,7 +2714,7 @@ def execute_deployment_task(task_id):
         error_msg = traceback.format_exc()
         task.log_content += f"任务执行异常: {error_msg}\n"
         task.status = 'failed'
-        task.completed_at = datetime.now()
+        task.completed_at = timezone.now()
         task.save()
 
 
@@ -2943,7 +2943,7 @@ def record_deployment_history(task, vm_relation, status, message,
     from django.utils import timezone
     
     start_time = task.started_at
-    end_time = datetime.now()
+    end_time = timezone.now()
     duration = int((end_time - start_time).total_seconds())
     
     # 获取脚本内容
@@ -3395,7 +3395,7 @@ exit $EXIT_CODE
     
     # 获取当前时间戳
     from django.utils import timezone
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
     
     # 替换模板中的变量
     script = script_template.format(
@@ -3870,7 +3870,7 @@ def task_start_api(request, pk):
         
         # 更新任务状态
         task.status = 'deploying'
-        task.started_at = datetime.now()
+        task.started_at = timezone.now()
         task.save()
         
         # 异步执行部署任务
@@ -3914,14 +3914,14 @@ def task_cancel_api(request, pk):
         
         # 更新任务状态
         task.status = 'cancelled'
-        task.completed_at = datetime.now()
+        task.completed_at = timezone.now()
         task.save()
         
         # 记录日志
         if task.log_content:
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已取消\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已取消\n"
         else:
-            task.log_content = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已取消\n"
+            task.log_content = f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务已取消\n"
         task.save()
         
         return JsonResponse({
@@ -3969,9 +3969,9 @@ def task_retry_api(request, pk):
         
         # 记录日志
         if task.log_content:
-            task.log_content += f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务重置并准备重新执行\n"
+            task.log_content += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务重置并准备重新执行\n"
         else:
-            task.log_content = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务重置并准备重新执行\n"
+            task.log_content = f"[{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}] 任务重置并准备重新执行\n"
         
         task.save()
         

@@ -247,9 +247,9 @@
                         </thead>
                         <tbody>
                             <tr><td>Java 全量</td><td><code>pcms.war</code></td><td>标准 WAR 包</td></tr>
-                            <tr><td>Java 增量</td><td><code>pcms.zip</code></td><td>将 <code>WEB-INF</code>、<code>module</code> 等放入 <code>pcms/</code> 文件夹，压缩该文件夹为 <code>pcms.zip</code>（切勿嵌套）</td></tr>
-                            <tr><td>H5 全量</td><td><code>confApp.zip</code></td><td>与 Java 增量相同逻辑：将 H5 资源放入 <code>confApp/</code> 文件夹，压缩该文件夹为 <code>confApp.zip</code></td></tr>
-                            <tr><td>DCS 文件</td><td><code>pcms</code> （C++ 可执行文件）</td><td>直接替换原文件</td></tr>
+                            <tr><td>Java 增量</td><td><code>pcms.zip</code></td><td>将 <code>WEB-INF</code>、<code>module</code> 等放入 <code>pcms/</code> 文件夹，压缩pcms文件夹为 <code>pcms.zip</code>（切勿嵌套）</td></tr>
+                            <tr><td>H5 全量</td><td><code>confApp.zip</code></td><td>和pcms同级目录的H5，与 Java 增量相同逻辑：将 H5 资源放入 <code>confApp/</code> 文件夹，压缩confApp文件夹为 <code>confApp.zip</code>不要嵌套目录</td></tr>
+                            <tr><td>DCS 文件</td><td><code>pcms</code> （C++ 可执行文件）</td><td>C++的pcms文件</td></tr>
                             <tr><td>Java 日志全量</td><td><code>pcmsLog.war</code></td><td>标准 WAR 包</td></tr>
                             <tr><td>Java 日志增量</td><td><code>pcmsLog.zip</code></td><td>与 Java 增量相同：文件夹内为 <code>pcmsLog/</code>，压缩为 <code>pcmsLog.zip</code></td></tr>
                         </tbody>
@@ -262,7 +262,7 @@
                 <h6 class="text-primary"><i class="fas fa-database"></i> 数据库说明</h6>
                 <ul class="ms-3">
                     <li><span class="badge bg-danger">暂不支持</span> 通过更新包执行 SQL 变更，请务必手动备份数据库并执行变更脚本。</li>
-                    <li>脚本内置备份命令使用绝对路径 <code>/usr/bin/mysqldump</code>，若 MySQL 未安装在默认路径，备份将失败，需手动处理或修改脚本。</li>
+                    <li>脚本内置备份命令使用绝对路径 <code>/usr/local/PCMS/mysql/bin/mysqldump</code>，若 MySQL 未安装在默认路径，备份将失败，需手动处理或修改脚本。</li>
                     <li>OceanBase 数据库使用 <code>mysqldump</code> 可能因租户内存/参数不兼容报错，后续优化，目前请手动备份。</li>
                 </ul>
             </div>
@@ -288,7 +288,8 @@
                     <li><strong>配置文件被还原</strong>：Java 更新时会自动还原原有 <code>.properties</code> 文件，若新版本增加了配置项，还原后可能缺少新配置导致启动失败。需登录服务器手动补充。</li>
                     <li><strong>数据库备份失败</strong>：如前述，非标准 MySQL 安装路径或 OceanBase 会导致备份中断，不影响更新但会失去自动备份。</li>
                     <li><strong>增量包嵌套错误</strong>：若 zip 包内层还包含一层同名目录（如 <code>pcms/pcms/</code>），更新时会覆盖错误，务必按规范打包。</li>
-                </ul>
+                    <li><strong>修改更新脚本时</strong>：所有去启动、停止、重启服务的命令，<strong>必须以systemctl start/restart/stop ****方式去写</strong>，不要写为service **** start/restart/stop，否则会导致系统认为更新错误</li>
+		</ul>
             </div>
             <div class="alert alert-light border small p-2 mb-0">
                 <i class="fas fa-lightbulb text-warning"></i> 建议：重要更新前先在测试环境验证更新包，并提前手动备份数据库及配置文件。
